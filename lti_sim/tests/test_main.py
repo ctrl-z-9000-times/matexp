@@ -4,7 +4,7 @@ import os
 def test_nav11():
     directory   = os.path.dirname(__file__)
     test_file   = os.path.join(directory, 'Nav11.mod')
-    output_file = os.path.join(directory, 'tmp.cu')
+    output_file = os.path.join(directory, 'tmp.cpp')
     if os.path.exists(output_file): os.remove(output_file)
     subprocess.run(['python', '-m', 'lti_sim',
             test_file, '-i', 'v', '-120', '120',
@@ -21,8 +21,9 @@ def test_ampa():
     output_file = os.path.join(directory, 'tmp.cu')
     if os.path.exists(output_file): os.remove(output_file)
     subprocess.run(['python', '-m', 'lti_sim',
-            test_file, '-i', 'C', '0', '1e3', '--logarithmic',
+            test_file, '-i', 'C', '0', '1e3', '--log',
             '-t', '0.1', '-c', '37',
+            'f32', '--target', 'cuda',
             '--benchmark',
             '-o', output_file])
     with open(output_file, 'rt') as f:

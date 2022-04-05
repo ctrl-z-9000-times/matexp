@@ -11,10 +11,12 @@ import nmodl.ast
 import nmodl.dsl
 import nmodl.symtab
 
+import lti_sim.inputs
+
 ANT = nmodl.ast.AstNodeType
 
 class NMODL_Compiler:
-    def __init__(self, nmodl_filename):
+    def __init__(self, nmodl_filename, inputs, temperature):
         self.nmodl_filename = os.path.abspath(str(nmodl_filename))
         self._setup_parser()
         self._gather_name()
@@ -23,7 +25,8 @@ class NMODL_Compiler:
         self._gather_conserve_statements()
         nmodl.dsl.visitor.KineticBlockVisitor().visit_program(self.AST)
         self._gather_code_blocks()
-        self._gather_inputs()
+        self._gather_inputs(inputs)
+        self._compile_derivative_block(temperature)
 
     def _setup_parser(self):
         with open(self.nmodl_filename, 'rt') as f: nmodl_text = f.read()
@@ -46,6 +49,7 @@ class NMODL_Compiler:
     def _gather_states(self):
         states = self.symbols.get_variables_with_properties(nmodl.symtab.NmodlType.state_var)
         self.state_names = sorted(x.get_name() for x in states)
+        self.num_states = len(self.state_names)
 
     def _gather_parameters(self):
         self.parameters = {}
@@ -75,35 +79,44 @@ class NMODL_Compiler:
         self.derivative_block = CodeBlock(derivative_blocks[0])
         self.initial_block = CodeBlock(self.lookup(ANT.INITIAL_BLOCK)[0])
 
-    def _gather_inputs(self):
-        self.inputs = []
+    def _gather_inputs(self, inputs):
         # 
+        input_symbols = []
         if self.derivative_block.reads_symbol("v"):
-            self.inputs.append("v")
-        # 
+            input_symbols.append("v")
         for stmt in self.lookup(ANT.USEION):
             ion = stmt.name.value.eval()
             for x in stmt.readlist:
                 var_name = x.name.value.eval()
-                if   var_name == ion + 'i': self.inputs.append(var_name)
-                elif var_name == ion + 'o': self.inputs.append(var_name)
-        # 
+                if   var_name == ion + 'i': input_symbols.append(var_name)
+                elif var_name == ion + 'o': input_symbols.append(var_name)
         for x in self.lookup(ANT.POINTER_VAR):
-            self.inputs.append(x.get_node_name())
-        # 
-        self.inputs = sorted(self.inputs)
+            input_symbols.append(x.get_node_name())
+        # Match up the expected inputs with the given Input data structures.
+        assert all(isinstance(inp, lti_sim.inputs.Input) for inp in inputs)
+        inputs = {inp.name: inp for inp in inputs}
+        try:
+            self.inputs = [inputs[name] for name in sorted(input_symbols)]
+        except KeyError:
+            expected_inputs = ' & '.join(input_symbols)
+            received_inputs = ' & '.join(inputs.keys())
+            raise ValueError(f'Invalid inputs, expected {expected_inputs} got {received_inputs}')
+        # Make aliases "input1" etc.
+        for inp_idx, inp in enumerate(self.inputs):
+            setattr(self, f"input{inp_idx+1}", inp)
 
-    def get_derivative_function(self, temperature):
+    def _compile_derivative_block(self, temperature):
         scope = {'celsius': float(temperature)} # Allow NMODL file to override temperature.
         scope.update(self.parameters)
         pycode = self.initial_block.to_python()
-        pycode += f"def {self.name}_derivative_({', '.join(self.inputs + self.state_names)}):\n"
+        arguments = [inp.name for inp in self.inputs] + self.state_names
+        pycode += f"def {self.name}_derivative_({', '.join(arguments)}):\n"
         for state in self.state_names:
             pycode += f"    __d_{state} = 0.0\n"
         pycode += self.derivative_block.to_python("    ")
         pycode += f"    return [{', '.join(f'__d_{state}' for state in self.state_names)}]\n\n"
         _exec_string(pycode, scope)
-        return scope[f"{self.name}_derivative_"]
+        self.derivative = scope[f"{self.name}_derivative_"]
 
     @classmethod
     def _parse_statement(cls, AST):

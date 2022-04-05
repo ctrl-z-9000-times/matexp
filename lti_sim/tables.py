@@ -68,8 +68,9 @@ class Approx1D:
     def _make_table(self):
         # First make sure there are enough samples of exact data.
         samples_per_bucket = self.exact.num_samples / self.input1.num_buckets
-        if samples_per_bucket < 10 + self.order + 1:
-            self.exact.set_num_samples(self.input1.num_buckets * 50)
+        minimum_samples_per = 2 * (self.order + 1)
+        if samples_per_bucket < minimum_samples_per:
+            self.exact.set_num_samples(self.input1.num_buckets * 2 * minimum_samples_per)
         # 
         self.table = np.empty([self.input1.num_buckets, self.num_states, self.num_states, self.order + 1])
         for bucket_index in range(self.input1.num_buckets):
