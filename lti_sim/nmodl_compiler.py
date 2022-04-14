@@ -6,11 +6,9 @@ evaluating the DERIVATIVE blocks contained in them.
 import math
 import os.path
 import re
-
 import nmodl.ast
 import nmodl.dsl
 import nmodl.symtab
-
 import lti_sim.inputs
 
 ANT = nmodl.ast.AstNodeType
@@ -101,7 +99,9 @@ class NMODL_Compiler:
             expected_inputs = ' & '.join(input_symbols)
             received_inputs = ' & '.join(inputs.keys())
             raise ValueError(f'Invalid inputs, expected {expected_inputs} got {received_inputs}')
-        # Make aliases "input1" etc.
+        self.num_inputs = len(self.inputs)
+        self.input_names = [inp.name for inp in self.inputs]
+        # Make aliases "input1", "input2", etc.
         for inp_idx, inp in enumerate(self.inputs):
             setattr(self, f"input{inp_idx+1}", inp)
 
@@ -117,6 +117,7 @@ class NMODL_Compiler:
         pycode += f"    return [{', '.join(f'__d_{state}' for state in self.state_names)}]\n\n"
         _exec_string(pycode, scope)
         self.derivative = scope[f"{self.name}_derivative_"]
+        self.temperature = scope['celsius']
 
     @classmethod
     def _parse_statement(cls, AST):

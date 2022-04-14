@@ -16,6 +16,8 @@ def test_linear():
     assert b == 17-1
     assert l == pytest.approx(1.0)
 
+    assert a.bisect_inputs(5, 6) == pytest.approx(5.5)
+
 def test_logarithmic():
     a = LogarithmicInput('foobar', 0, 2e3)
     a.set_num_buckets(37, scale=1e-3)
@@ -29,6 +31,8 @@ def test_logarithmic():
     b, l = a.get_bucket_location(2e3 - 1e-12)
     assert b == 37-1
     assert l == pytest.approx(1.0)
+
+    assert 5.25 < a.bisect_inputs(5, 6) < 5.49
 
 def test_linear_inverse():
     a = LinearInput('foobar', 11, 57)
@@ -61,3 +65,18 @@ def test_logarithmic_inverse():
         assert 0.0 <= l <= a.num_buckets
         assert a.minimum <= v <= a.maximum
 
+def test_random():
+    a = LogarithmicInput('foobar', 0, 2e3)
+    a.set_num_buckets(37, scale=1e-3)
+
+    float(a.random())
+    assert a.random([3,3]).shape == (3,3)
+    assert a.random().dtype == np.float64
+
+    for trial in range(100):
+        assert a.minimum <= a.random() <= a.maximum
+    rnd = a.random(100, dtype=np.float32)
+    assert np.all(rnd >= a.minimum)
+    assert np.all(rnd <= a.maximum)
+    assert rnd.dtype == np.float32
+    assert np.mean(rnd) < a.maximum / 4 # Check for non-uniform distribution.

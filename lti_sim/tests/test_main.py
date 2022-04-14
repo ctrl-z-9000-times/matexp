@@ -9,8 +9,9 @@ def test_nav11():
     subprocess.run(['python', '-m', 'lti_sim',
             test_file, '-i', 'v', '-120', '120',
             '-t', '0.1', '-c', '37',
-            '--benchmark',
-            '-o', output_file])
+            '--verbose',
+            '-o', output_file],
+            check=True,)
     with open(output_file, 'rt') as f:
         assert len(f.read()) > 100 # Check file is not empty.
     os.remove(output_file)
@@ -23,9 +24,27 @@ def test_ampa():
     subprocess.run(['python', '-m', 'lti_sim',
             test_file, '-i', 'C', '0', '1e3', '--log',
             '-t', '0.1', '-c', '37',
-            'f32', '--target', 'cuda',
-            '--benchmark',
-            '-o', output_file])
+            '-f32', '--target', 'cuda',
+            '--verbose',
+            '-o', output_file],
+            check=True,)
+    with open(output_file, 'rt') as f:
+        assert len(f.read()) > 100 # Check file is not empty.
+    os.remove(output_file)
+
+def test_nmda():
+    directory   = os.path.dirname(__file__)
+    test_file   = os.path.join(directory, 'NMDA.mod')
+    output_file = os.path.join(directory, 'tmp.cu')
+    if os.path.exists(output_file): os.remove(output_file)
+    subprocess.run(['python', '-m', 'lti_sim', test_file,
+            '-t', '0.1', '-c', '37',
+            '-i', 'v', '-120', '120',
+            '-i', 'C', '0', '1e3', '--log', 'C',
+            '--target', 'cuda',
+            '-v',
+            '-o', output_file],
+            check=True,)
     with open(output_file, 'rt') as f:
         assert len(f.read()) > 100 # Check file is not empty.
     os.remove(output_file)

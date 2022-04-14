@@ -1,5 +1,5 @@
 """
-These classes transforms the inputs between real world values and indexes which
+These classes transform the inputs between real world values and indexes which
 are suitable for use with a look up table.
 """
 
@@ -19,6 +19,9 @@ class Input:
             self.initial = float(initial)
             assert self.minimum <= self.initial < self.maximum
 
+    def __repr__(self):
+        return f"lti_sim.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum}, initial={self.initial})"
+
     def set_num_buckets(self, num_buckets):
         self.num_buckets = int(num_buckets)
         assert self.num_buckets >= 1
@@ -29,21 +32,22 @@ class Input:
     def get_input_value(self, bucket_value):
         raise NotImplementedError(type(self))
 
-    def get_bucket_location(self, input_value, bucket_index=None):
+    def get_bucket_location(self, input_value):
         """ Returns pair of (bucket_index, location_within_bucket) """
-        input_value = float(input_value)
         location = self.get_bucket_value(input_value)
-        if bucket_index is None:
-            bucket_index = int(location)
+        bucket_index = int(location)
+        if bucket_index < 0:
+            bucket_index = 0
+            location     = 0.0
+        elif bucket_index >= self.num_buckets:
+            bucket_index = self.num_buckets - 1
+            location     = 1.0
         else:
-            bucket_index = int(bucket_index)
-        return (bucket_index, location - bucket_index)
+            location -= bucket_index
+        return (bucket_index, location)
 
     def sample_space(self, number):
-        """
-        Note: this returns the endpoint, which technically should be excluded
-        from the input space.
-        """
+        """ Note: this includes the endpoint. """
         number = int(number)
         samples = np.linspace(0, self.num_buckets, number, endpoint=True)
         for sample_index, bucket_location in enumerate(samples):
@@ -52,6 +56,17 @@ class Input:
         samples[0]  = self.minimum
         samples[-1] = self.maximum
         return samples
+
+    def bisect_inputs(self, input_value1, input_value2):
+        b1  = self.get_bucket_value(input_value1)
+        b2  = self.get_bucket_value(input_value2)
+        mid = 0.5 * (b1 + b2)
+        return self.get_input_value(mid)
+
+    def random(self, size=1, dtype=np.float64, array_module=np):
+        bucket_values = array_module.random.uniform(0, self.num_buckets, size)
+        input_values = self.get_input_value(bucket_values)
+        return array_module.array(input_values, dtype=dtype)
 
 class LinearInput(Input):
     """ """

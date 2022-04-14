@@ -1,14 +1,13 @@
-from .codegen import Codegen1D
+from .approx import MatrixSamples, Approx1D, Approx2D
+from .codegen import Codegen
 from .inputs import LinearInput, LogarithmicInput
-from .tables import Exact1D, Approx1D
 import lti_sim
 import math
 import numpy as np
 
 class Optimize1D:
-    def __init__(self, nmodl_info, time_step, accuracy, float_dtype, target):
-        self.nmodl_info     = nmodl_info
-        self.time_step      = float(time_step)
+    def __init__(self, model, accuracy, float_dtype, target):
+        self.model          = model
         self.accuracy       = float(accuracy)
         self.float_dtype    = float_dtype
         self.target         = target
@@ -17,32 +16,34 @@ class Optimize1D:
         self.num_buckets = 10
         self.order       = 4
         # Initialize the table of exact matrix data.
-        if isinstance(self.nmodl_info.input1, LinearInput):
-            self.nmodl_info.input1.set_num_buckets(self.num_buckets)
-            self._setup_exact()
-        elif isinstance(self.nmodl_info.input1, LogarithmicInput):
+        if isinstance(self.model.input1, LinearInput):
+            self.model.input1.set_num_buckets(self.num_buckets)
+            self.samples = MatrixSamples(self.model)
+        elif isinstance(self.model.input1, LogarithmicInput):
             self.log_scale = 1.0
-            self.nmodl_info.input1.set_num_buckets(self.num_buckets, self.log_scale)
-            self._setup_exact()
+            self.model.input1.set_num_buckets(self.num_buckets, self.log_scale)
+            self.samples = MatrixSamples(self.model)
             self._optimize_log_scale()
         self._optimize_polynomial_order() # Run the main optimization routine.
-        self.nmodl_info.input1.set_num_buckets(self.num_buckets) # Fixup shared data structures.
-
-    def _setup_exact(self):
-        self.exact = Exact1D(self.time_step,
-                             self.nmodl_info.derivative,
-                             self.nmodl_info.state_names,
-                             self.nmodl_info.input1)
 
     def _optimize_log_scale(self):
-        approx = Approx1D(self.exact, order=self.order)
+        approx = Approx1D(self.samples, order=self.order)
         error  = approx.measure_error()
         while np.argmax(error) == 0:
             self.log_scale /= 10.0
-            self.nmodl_info.input1.set_num_buckets(self.num_buckets, self.log_scale)
-            self._setup_exact()
-            approx = Approx1D(self.exact, order=self.order)
+            self.model.input1.set_num_buckets(self.num_buckets, self.log_scale)
+            self.samples = MatrixSamples(self.model)
+            approx = Approx1D(self.samples, order=self.order)
             error  = approx.measure_error()
+
+    def _save_results(self, parameters):
+        parameters.benchmark()
+        self.order          = parameters.order
+        self.num_buckets    = parameters.num_buckets
+        self.approx         = parameters.approx
+        self.backend        = parameters.backend
+        self.benchmark      = (parameters.runtime, parameters.runtime_std)
+        self.model.input1.set_num_buckets(self.num_buckets) # Fixup shared data structures.
 
     def _optimize_polynomial_order(self):
         cursor = self._optimize_num_buckets(self.num_buckets, self.order)
@@ -72,13 +73,9 @@ class Optimize1D:
                     break
                 else:
                     high_cursor = new
-        # Save the results.
+        # 
         fastest = min(experiments, key=lambda parameters: parameters.runtime)
-        self.order          = fastest.order
-        self.num_buckets    = fastest.num_buckets
-        self.approx         = fastest.approx
-        self.backend        = fastest.backend
-        self.benchmark      = (fastest.runtime, fastest.runtime_std)
+        self._save_results(fastest)
 
     def _optimize_num_buckets(self, num_buckets, order, max_runtime=None):
         cursor = Parameters1D(self, num_buckets, order)
@@ -115,11 +112,11 @@ class Optimize1D:
 class Parameters1D:
     def __init__(self, optimizer, num_buckets, order):
         self.optimizer      = optimizer
-        self.nmodl_info     = optimizer.nmodl_info
+        self.model          = optimizer.model
         self.num_buckets    = round(num_buckets)
         self.order          = int(order)
-        self.nmodl_info.input1.set_num_buckets(self.num_buckets)
-        self.approx         = Approx1D(self.optimizer.exact, order=self.order)
+        self.model.input1.set_num_buckets(self.num_buckets)
+        self.approx         = Approx1D(self.optimizer.samples, order=self.order)
         self.error          = self.approx.measure_error()
         self.max_error      = np.max(self.error)
 
@@ -135,20 +132,44 @@ class Parameters1D:
 
     def benchmark(self):
         if hasattr(self, 'runtime'): return
-        self.nmodl_info.input1.set_num_buckets(self.num_buckets)
-        self.backend = Codegen1D(
-                self.nmodl_info.name,
+        self.model.input1.set_num_buckets(self.num_buckets)
+        self.backend = Codegen(
                 self.approx,
-                self.nmodl_info.conserve_sum,
                 self.optimizer.float_dtype,
                 self.optimizer.target)
         mean, std = lti_sim._measure_speed(
                 self.backend.load(),
-                self.nmodl_info.num_states,
-                self.nmodl_info.input1,
-                self.nmodl_info.conserve_sum,
+                self.model.num_states,
+                [self.model.input1],
+                self.model.conserve_sum,
                 self.optimizer.float_dtype,
                 self.optimizer.target)
         self.runtime = mean
         self.runtime_std = std
         self.table_size = self.approx.table.nbytes
+
+class Optimize2D:
+    def __init__(self, model, accuracy, float_dtype, target):
+        self.model          = model
+        self.accuracy       = float(accuracy)
+        self.float_dtype    = float_dtype
+        self.target         = target
+        assert 0.0 < self.accuracy < 1.0
+
+        raise NotImplementedError
+
+        model.input1.set_num_buckets(60, scale=.001)
+        model.input2.set_num_buckets(60)
+        # poly = [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]]
+        poly = [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3],]
+        self.samples = MatrixSamples(model)
+        self.approx = Approx2D(self.samples, poly)
+        coefs = self.approx.table.reshape(-1, self.approx.num_terms)
+        print("num samples", len(self.samples.samples))
+        print("RMS Coefficients", np.mean(coefs ** 2, axis=0) ** .5)
+        error = np.max(self.approx.measure_error())
+        print("Error", error)
+        self.backend = Codegen(self.approx, float_dtype, target)
+        f = self.backend.load()
+        self.benchmark = lti_sim._measure_speed(f, model.num_states, model.inputs, model.conserve_sum,
+                                                float_dtype, target)

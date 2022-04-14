@@ -1,33 +1,33 @@
 """
-Backend for generating the run-time program.
+Backend for generating the run-time program, compiling it, and loading it into python.
 """
 
-# TODO: Consider using namespaces?
-
-import numpy as np
+from .inputs import LinearInput, LogarithmicInput
 import ctypes
+import numpy as np
 import os.path
 import subprocess
 import tempfile
-from .inputs import LinearInput, LogarithmicInput
 
-class Codegen1D:
-    def __init__(self, name, table, conserve_sum, float_dtype, target):
-        self.name           = str(name)
+class Codegen:
+    def __init__(self, table, float_dtype, target):
+        self.model          = table.model
         self.table          = table.table
-        self.input1         = table.input1
-        self.state_names    = table.state_names
-        self.num_states     = int(table.num_states)
-        self.order          = int(table.order)
-        self.conserve_sum   = conserve_sum
-        self.initial_state  = table.exact.initial_state(conserve_sum)
-        self.target         = str(target)
+        self.polynomial     = table.polynomial.terms
+        self.num_terms      = table.num_terms
         self.float_dtype    = float_dtype
-        self._cached_load   = None
+        self.target         = target
+        self.name           = self.model.name
+        self.inputs         = self.model.inputs
+        self.input_names    = self.model.input_names
+        self.state_names    = self.model.state_names
+        self.num_states     = self.model.num_states
+        self.conserve_sum   = self.model.conserve_sum
+        self.initial_state  = self.model.get_initial_state()
         assert self.num_states >= 0
-        assert self.order >= 0
-        assert self.target in ('host', 'cuda')
+        assert self.num_terms > 0
         assert self.float_dtype in (np.float32, np.float64)
+        assert self.target in ('host', 'cuda')
         self.source_code = (
                 self._preamble() +
                 self._initial_state() +
@@ -48,29 +48,34 @@ class Codegen1D:
 
     def _initial_state(self):
         c = ""
-        for name, value in zip(self.state_names, self.initial_state):
+        for name, value in sorted(self.initial_state.items()):
             c += f"const real INITIAL_{name} = {value};\n"
         c += "\n"
         return c
 
     def _table_data(self):
-        table_size = self.input1.num_buckets * self.num_states**2 * (self.order+1)
-        table_data = self.table.transpose(0, 2, 1, 3)
-        assert table_data.size == table_size
+        # Check table size matches what's expected.
+        table_size = (self.num_states ** 2) * (self.num_terms)
+        for inp in self.inputs: table_size *= inp.num_buckets
+        assert self.table.size == table_size
+        # 
+        table_data = self.table.reshape(-1, self.num_states, self.num_states, self.num_terms) # Flatten the input dimensions.
+        table_data = table_data.transpose(0, 2, 1, 3) # Switch from row-major to column-major format.
         table_data = np.array(table_data, dtype=self.float_dtype)
         data_str   = ',\n    '.join((','.join(str(x) for x in bucket.flat)) for bucket in table_data)
         if self.target == 'cuda':
             device = '__device__ '
         elif self.target == 'host':
             device = ''
-        return f"{device}const real table[{table_size}] = {{\n    {data_str}}};\n\n"
+        return f"{device}const real table[{table_data.size}] = {{\n    {data_str}}};\n\n"
 
     def _entrypoint(self):
         c = 'extern "C" '
         if self.target == 'cuda':
             c += "__global__ "
         c += f"void {self.name}_advance(int n_inst, "
-        c += f"real* {self.input1.name}, int* {self.input1.name}_indices, "
+        for inp in self.input_names:
+            c += f"real* {inp}, int* {inp}_indices, "
         c +=  ", ".join(f"real* {state}" for state in self.state_names)
         c +=  ") {\n"
         if self.target == 'host':
@@ -79,10 +84,12 @@ class Codegen1D:
             c +=  "    const int index = blockIdx.x * blockDim.x + threadIdx.x;\n"
             c +=  "    if( index >= n_inst ) { return; }\n"
         c +=  "        // Access this instance's data.\n"
-        access_input = f"{self.input1.name}[{self.input1.name}_indices[index]]"
+        access_inputs = ""
+        for inp in self.input_names:
+            access_inputs += f"{inp}[{inp}_indices[index]], "
         c += f"        real* state[{self.num_states}] = {{{', '.join(self.state_names)}}};\n"
         c += f"        for(int x = 0; x < {self.num_states}; ++x) {{ state[x] += index; }}\n"
-        c += f"        {self.name}_kernel({access_input}, state);\n"
+        c += f"        {self.name}_kernel({access_inputs}state);\n"
         if self.target == 'host':
             c +=  "    }\n"
         c +=  "}\n\n"
@@ -93,52 +100,67 @@ class Codegen1D:
         if self.target == 'cuda':
             c += "__device__ "
         c += f"__inline__ void {self.name}_kernel("
-        c += f"real input, real* state[{self.num_states}]) {{\n"
-        c +=  "    const real* tbl_ptr = table;\n"
+        for idx in range(len(self.inputs)):
+            c += f"real input{idx}, "
+        c += f"real* state[{self.num_states}]) {{\n"
+        c +=  "    const real* __restrict__ tbl_ptr = table;\n"
         c +=  "    // Locate the input within the look-up table.\n"
-        if isinstance(self.input1, LinearInput):
-            c += f"    input = (input - {self.input1.minimum}) * {self.input1.bucket_frq};\n"
-        elif isinstance(self.input1, LogarithmicInput):
-            if self.target == 'host':
-                c += f"    input = log2(input + {self.input1.scale});\n"
-            elif self.target == 'cuda':
-                if self.float_dtype == np.float32:
-                    c += f"    input = log2f(input + {self.input1.scale});\n"
-                elif self.float_dtype == np.float64:
-                    c += f"    input = log2(input + {self.input1.scale});\n"
-                else: raise NotImplementedError(self.float_dtype)
-            else: raise NotImplementedError(self.target)
-            c += f"    input = (input - {self.input1.log2_minimum}) * {self.input1.bucket_frq};\n"
-        else: raise NotImplementedError(type(self.input1))
-        c +=  "    int bucket = (int) input;\n"
-        c += f"    if(bucket > {self.input1.num_buckets - 1}) {{\n"
-        c += f"        bucket = {self.input1.num_buckets - 1};\n"
-        c += f"        input = 1.0;\n"
-        c +=  "    }\n"
-        if self.input1.minimum != 0.0:
-            c += f"    else if(bucket < 0) {{\n"
-            c += f"        bucket = 0;\n"
-            c += f"        input = 0.0;\n"
+        for idx, inp in enumerate(self.inputs):
+            if isinstance(inp, LinearInput):
+                c += f"    input{idx} = (input{idx} - {inp.minimum}) * {inp.bucket_frq};\n"
+            elif isinstance(inp, LogarithmicInput):
+                if self.target == 'host':
+                    c += f"    input{idx} = log2(input{idx} + {inp.scale});\n"
+                elif self.target == 'cuda':
+                    if self.float_dtype == np.float32:
+                        c += f"    input{idx} = log2f(input{idx} + {inp.scale});\n"
+                    elif self.float_dtype == np.float64:
+                        c += f"    input{idx} = log2(input{idx} + {inp.scale});\n"
+                    else: raise NotImplementedError(self.float_dtype)
+                else: raise NotImplementedError(self.target)
+                c += f"    input{idx} = (input{idx} - {inp.log2_minimum}) * {inp.bucket_frq};\n"
+            else: raise NotImplementedError(type(inp))
+            c += f"    int bucket{idx} = (int) input{idx};\n"
+            c += f"    if(bucket{idx} > {inp.num_buckets - 1}) {{\n"
+            c += f"        bucket{idx} = {inp.num_buckets - 1};\n"
+            c += f"        input{idx} = 1.0;\n"
             c +=  "    }\n"
-        c +=  "    else {\n"
-        c +=  "        input = input - bucket;\n"
-        c +=  "    }\n"
-        c += f"    tbl_ptr += bucket * {self.num_states**2 * (self.order + 1)};\n"
-        c +=  "    // Compute the exponential terms of the polynomial.\n"
-        for term in range(1, self.order + 1):
-            c += f"    const real value{term} = {'*'.join('input' for _ in range(term))};\n"
+            if not isinstance(inp, LogarithmicInput): # What could go wrong? It's not like a chemical concentration will ever go negative, right?
+                c += f"    else if(bucket{idx} < 0) {{\n"
+                c += f"        bucket{idx} = 0;\n"
+                c += f"        input{idx} = 0.0;\n"
+                c +=  "    }\n"
+            c +=  "    else {\n"
+            c += f"        input{idx} = input{idx} - bucket{idx};\n"
+            c +=  "    }\n"
+        nd_index = []
+        stride = 1
+        for inp_idx, inp in reversed(list(enumerate(self.inputs))):
+            if stride == 1: nd_index.append(f"bucket{inp_idx}")
+            else:           nd_index.append(f"bucket{inp_idx} * {stride}")
+            stride *= inp.num_buckets
+        c += f"    const int bucket = {' + '.join(nd_index)};\n"
+        c += f"    tbl_ptr += bucket * {self.num_states**2 * (self.num_terms)};\n"
+        c +=  "    // Compute the basis of the polynomial.\n"
+        for term_idx, powers in enumerate(self.polynomial):
+            factors = []
+            for inp_idx, power in enumerate(powers):
+                factors.extend([f"input{inp_idx}"] * power)
+            if factors:
+                c += f"    const real term{term_idx} = {' * '.join(factors)};\n"
         c +=  "\n"
         c += f"    real scratch[{self.num_states}] = {{{', '.join('0.0' for _ in range(self.num_states))}}};\n"
         c += f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
         c +=  "        const real s = *state[col];\n"
         c += f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
         c +=  "            // Approximate this entry of the matrix.\n"
-        for term in range(self.order + 1):
-            if term == 0:
-                c += f"            const real polynomial = (*tbl_ptr++)"
+        terms = []
+        for term_idx, powers in enumerate(self.polynomial):
+            if any(p > 0 for p in powers):
+                terms.append(f"term{term_idx} * (*tbl_ptr++)")
             else:
-                c += f" + (*tbl_ptr++)*value{term}"
-        c +=  ";\n"
+                terms.append("(*tbl_ptr++)")
+        c += f"            const real polynomial = {' + '.join(terms)};\n"
         c +=  "            scratch[row] += polynomial * s; // Compute the dot product. \n"
         c +=  "        }\n"
         c +=  "    }\n"
@@ -167,38 +189,43 @@ class Codegen1D:
             f.flush()
 
     def load(self):
-        if self._cached_load is not None: return self._cached_load
-        scope = {"numpy": np}
+        if fn := getattr(self, "_load_cache", False): return fn
         fn_name  = self.name + "_advance"
-        inp_name = self.input1.name
-        idx_name = self.input1.name + "_indices"
         real_t   = "numpy." + self.float_dtype.__name__
         index_t  = "numpy.int32"
-        pycode  = f"def {fn_name}(n_inst, {inp_name}, {idx_name}, "
-        pycode +=  ", ".join(self.state_names)
-        pycode +=  "):\n"
+        scope    = {"numpy": np}
+        arrays = [] # Name of input
+        dtypes = [] # Name of numpy dtype
+        maxlen = [] # Relation to number of instance (n_inst)
+        for inp_name in self.input_names:
+            arrays.append(inp_name)
+            dtypes.append(real_t)
+            maxlen.append(">=")
+            arrays.append(inp_name+"_indices")
+            dtypes.append(index_t)
+            maxlen.append("==")
+        arrays.extend(self.state_names)
+        dtypes.extend([real_t] * self.num_states)
+        maxlen.extend(["=="]   * self.num_states)
+        pycode  = f"def {fn_name}(n_inst, {', '.join(arrays)}):\n"
         pycode +=  "    n_inst = int(n_inst)\n"
         if self.target == 'host':
-            for array in [inp_name, idx_name] + self.state_names:
-                pycode += f"    assert isinstance({array}, numpy.ndarray), 'isinstance({array}, numpy.ndarray)'\n"
-        pycode += f"    assert len({inp_name}) >= n_inst, 'len({inp_name}) >= n_inst'\n"
-        pycode += f"    assert {inp_name}.dtype == {real_t}, '{inp_name}.dtype == {real_t}'\n"
-        pycode += f"    assert len({idx_name}) == n_inst, 'len({idx_name}) == n_inst'\n"
-        pycode += f"    assert {idx_name}.dtype == {index_t}, '{idx_name}.dtype == {index_t}'\n"
-        for state in self.state_names:
-            pycode += f"    assert len({state}) == n_inst, 'len({state}) == n_inst'\n"
-            pycode += f"    assert {state}.dtype == {real_t}, '{state}.dtype == {real_t}'\n"
-        args_list = ', '.join(["n_inst", inp_name, idx_name] + self.state_names)
+            for x in arrays:
+                pycode += f"    assert isinstance({x}, numpy.ndarray), 'isinstance({x}, numpy.ndarray)'\n"
+        for x, dt in zip(arrays, dtypes):
+            pycode += f"    assert {x}.dtype == {dt}, '{x}.dtype == {dt}'\n"
+        for x, op in zip(arrays, maxlen):
+            pycode += f"    assert len({x}) {op} n_inst, 'len({x}) {op} n_inst'\n"
         if self.target == 'host':
-            pycode += f"    _entrypoint({args_list})\n"
+            pycode += f"    _entrypoint(n_inst, {', '.join(arrays)})\n"
             scope["_entrypoint"] = self._load_entrypoint_host()
         elif self.target == 'cuda':
             pycode += f"    threads = 32\n"
             pycode += f"    blocks = (n_inst + (threads - 1)) // threads\n"
-            pycode += f"    _entrypoint((blocks,), (threads,), ({args_list}))\n"
+            pycode += f"    _entrypoint((blocks,), (threads,), (n_inst, {', '.join(arrays)}))\n"
             scope["_entrypoint"] = self._load_entrypoint_cuda()
         exec(pycode, scope)
-        self._cached_load = fn = scope[fn_name]
+        self._load_cache = fn = scope[fn_name]
         return fn
 
     def _load_entrypoint_host(self):
@@ -212,8 +239,9 @@ class Codegen1D:
         so = ctypes.CDLL(so_file.name)
         fn = so[self.name + "_advance"]
         argtypes = [ctypes.c_int]
-        argtypes.append(np.ctypeslib.ndpointer(dtype=self.float_dtype, ndim=1, flags='C'))
-        argtypes.append(np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C'))
+        for _ in self.inputs:
+            argtypes.append(np.ctypeslib.ndpointer(dtype=self.float_dtype, ndim=1, flags='C'))
+            argtypes.append(np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C'))
         for _ in range(self.num_states):
             argtypes.append(np.ctypeslib.ndpointer(dtype=self.float_dtype, ndim=1, flags='C'))
         fn.argtypes = argtypes
