@@ -23,8 +23,8 @@ inputs.add_argument('--initial', nargs=2, action='append', default=[],
         metavar=('INPUT', 'VALUE'),
         help="default: the input's minimum value")
 sim = parser.add_argument_group('simulator arguments')
-sim.add_argument('-a', '--accuracy', type=float, default=1e-6,
-        help="maximum error per time step. default: 10^-6")
+sim.add_argument('-e', '--error', type=float, default=1e-4,
+        help="maximum error per time step. default: 10^-4")
 sim.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
 sim.add_argument('-f', '--float', choices=['32','64'], default='64',
@@ -62,5 +62,5 @@ for name, initial_value in args.initial:
 inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
 main(args.nmodl_filename, inputs, args.time_step, args.celsius,
-     accuracy=args.accuracy, target=args.target, float_dtype=float_dtype,
+     error=args.error, target=args.target, float_dtype=float_dtype,
      outfile=args.output, verbose=args.verbose, plot=args.plot,)

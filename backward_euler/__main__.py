@@ -19,9 +19,9 @@ ampa_mod  = os.path.join(py_dir, "tests", "ampa13.mod")
 nmda_mod  = os.path.join(py_dir, "tests", "NMDA.mod")
 
 lti_kwargs = {'temperature': 37.0, 'float_dtype': np.float64, 'target': 'host'}
-nav11_lti_sim = lambda ts, ac: lti_sim.main(nav11_mod, [voltage_input], ts, accuracy=ac, **lti_kwargs)[1]
-ampa_lti_sim = lambda ts, ac: lti_sim.main(ampa_mod, [glu_input], ts, accuracy=ac, **lti_kwargs)[1]
-nmda_lti_sim = lambda ts, ac: lti_sim.main(nmda_mod, [glu_input, voltage_input], ts, accuracy=ac, **lti_kwargs)[1]
+nav11_lti_sim = lambda ts, err: lti_sim.main(nav11_mod, [voltage_input], ts, error=err, **lti_kwargs)[1]
+ampa_lti_sim = lambda ts, err: lti_sim.main(ampa_mod, [glu_input], ts, error=err, **lti_kwargs)[1]
+nmda_lti_sim = lambda ts, err: lti_sim.main(nmda_mod, [glu_input, voltage_input], ts, error=err, **lti_kwargs)[1]
 
 def load_cpp(filename, num_inputs, num_states, TIME_STEP, opt_level=1):
     """ Compile one of the Backward Euler C++ files and link it into python. """
@@ -100,42 +100,44 @@ def plot_accuracy_vs_timestep():
     time_steps_ns = [100, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000]
     time_steps_ms = [ts/1000/1000 for ts in time_steps_ns]
     print("Measuring RMS-Error at time steps:", time_steps_ms)
+    exact_accuracy  = 1e-12
+    target_accuracy = 1e-6
     nav  = True
     ampa = True
     nmda = False
     if nav:
-        nav11_exact = nav11_lti_sim(time_steps_ms[0], 1e-12)
+        nav11_exact = nav11_lti_sim(time_steps_ms[0], exact_accuracy)
         # Nav11 Backward Euler
         nav11_be_fn = [load_cpp("Nav11.cpp", 1, 6, ts, 1) for ts in time_steps_ms[1:]]
         nav11_be_fn.insert(0, nav11_exact)
         nav11_be_err = measure_accuracy([voltage_input], 6, nav11_be_fn, time_steps_ns)
         print("Nav11 Backward Euler:", nav11_be_err)
         # Nav11 Matrix Exponential
-        nav11_me_fn = [nav11_lti_sim(ts, 1e-6) for ts in time_steps_ms[1:]]
+        nav11_me_fn = [nav11_lti_sim(ts, target_accuracy) for ts in time_steps_ms[1:]]
         nav11_me_fn.insert(0, nav11_exact)
         nav11_me_err = measure_accuracy([voltage_input], 6, nav11_me_fn, time_steps_ns)
         print("Nav11 Matrix Exponential:", nav11_me_err)
     if ampa:
-        ampa_exact  = ampa_lti_sim( time_steps_ms[0], 1e-12)
+        ampa_exact  = ampa_lti_sim( time_steps_ms[0], exact_accuracy)
         # AMPA Receptor Backward Euler
         ampa_be_fn = [load_cpp("ampa13.cpp", 1, 13, ts, 1) for ts in time_steps_ms[1:]]
         ampa_be_fn.insert(0, ampa_exact)
         ampa_be_err = measure_accuracy([glu_input], 13, ampa_be_fn, time_steps_ns)
         print("AMPA Backward Euler:", ampa_be_err)
         # AMPA Receptor Matrix Exponential
-        ampa_me_fn = [ampa_lti_sim(ts, 1e-6) for ts in time_steps_ms[1:]]
+        ampa_me_fn = [ampa_lti_sim(ts, target_accuracy) for ts in time_steps_ms[1:]]
         ampa_me_fn.insert(0, ampa_exact)
         ampa_me_err = measure_accuracy([glu_input], 13, ampa_me_fn, time_steps_ns)
         print("AMPA Matrix Exponential:", ampa_me_err)
     if nmda:
-        nmda_exact  = nmda_lti_sim( time_steps_ms[0], 1e-12)
+        nmda_exact  = nmda_lti_sim( time_steps_ms[0], exact_accuracy)
         # NMDA Receptor Backward Euler
         nmda_be_fn = [load_cpp("NMDA.cpp", 2, 10, ts, 1) for ts in time_steps_ms[1:]]
         nmda_be_fn.insert(0, nmda_exact)
         nmda_be_err = measure_accuracy([glu_input, voltage_input], 10, nmda_be_fn, time_steps_ns)
         print("NMDA Backward Euler:", nmda_be_err)
         # NMDA Receptor Matrix Exponential
-        nmda_me_fn = [nmda_lti_sim(ts, 1e-6) for ts in time_steps_ms[1:]]
+        nmda_me_fn = [nmda_lti_sim(ts, target_accuracy) for ts in time_steps_ms[1:]]
         nmda_me_fn.insert(0, nmda_exact)
         nmda_me_err = measure_accuracy([glu_input, voltage_input], 10, nmda_me_fn, time_steps_ns)
         print("NMDA Matrix Exponential:", nmda_me_err)
@@ -154,12 +156,8 @@ def plot_accuracy_vs_timestep():
     plt.show()
 
 def measure_speed(fn, num_states, inputs):
-    num_trials = 1
-    mean_speed = 0.0
-    for _ in range(num_trials):
-        mean_speed +=  lti_sim._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
-                                            float_dtype = np.float64, target = 'host')[0]
-    return mean_speed / num_trials
+    return lti_sim._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
+                                  float_dtype = np.float64, target = 'host')
 
 def plot_speed():
     # Nav11 Backward Euler

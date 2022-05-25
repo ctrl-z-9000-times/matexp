@@ -56,11 +56,6 @@ class LTI_Model(NMODL_Compiler):
         # 
         # This should marginally improve performance:
         #       * Only if user gives excessively large input space.
-        #       * Fewer buckets in table: less memory, fewer polynomials to fit.
+        #       * Fewer buckets in table, less memory.
         # 
         # Note: do not shrink LogarithmicInput minimum values, they're always zero.
-        # 
-        # Note: when fitting the polynomial at the edges, use the given
-        # minima & maxima (not the contracted bounds) so that inputs in the
-        # contracted areas use the asymptotic values. This will improve the
-        # accuracy by at most the max-error.

@@ -42,6 +42,7 @@ def test_nmda():
             '-i', 'v', '-120', '120',
             '-i', 'C', '0', '1e3', '--log', 'C',
             '--target', 'cuda',
+            '-e', '1e-3',
             '-v',
             '-o', output_file],
             check=True,)

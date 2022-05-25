@@ -90,6 +90,8 @@ class NMODL_Compiler:
                 elif var_name == ion + 'o': input_symbols.append(var_name)
         for x in self.lookup(ANT.POINTER_VAR):
             input_symbols.append(x.get_node_name())
+        for x in self.lookup(ANT.BBCORE_POINTER_VAR):
+            input_symbols.append(x.get_node_name())
         # Match up the expected inputs with the given Input data structures.
         assert all(isinstance(inp, lti_sim.inputs.Input) for inp in inputs)
         inputs = {inp.name: inp for inp in inputs}

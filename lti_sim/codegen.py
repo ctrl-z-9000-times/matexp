@@ -38,7 +38,8 @@ class Codegen:
     def _preamble(self):
         c = ""
         if self.target == 'host':
-            c += "#include <math.h>       /* log2 */\n\n"
+            if any(isinstance(inp, LogarithmicInput) for inp in self.inputs):
+                c += "#include <math.h>       /* log2 */\n\n"
         if self.float_dtype == np.float32:
             c +=  "typedef float real;\n\n"
         elif self.float_dtype == np.float64:
@@ -49,7 +50,7 @@ class Codegen:
     def _initial_state(self):
         c = ""
         for name, value in sorted(self.initial_state.items()):
-            c += f"const real INITIAL_{name} = {value};\n"
+            c += f"const real {name}0 = {value};\n"
         c += "\n"
         return c
 
@@ -81,15 +82,12 @@ class Codegen:
         if self.target == 'host':
             c +=  "    for(int index = 0; index < n_inst; ++index) {\n"
         elif self.target == 'cuda':
-            c +=  "    const int index = blockIdx.x * blockDim.x + threadIdx.x;\n"
-            c +=  "    if( index >= n_inst ) { return; }\n"
-        c +=  "        // Access this instance's data.\n"
-        access_inputs = ""
-        for inp in self.input_names:
-            access_inputs += f"{inp}[{inp}_indices[index]], "
-        c += f"        real* state[{self.num_states}] = {{{', '.join(self.state_names)}}};\n"
-        c += f"        for(int x = 0; x < {self.num_states}; ++x) {{ state[x] += index; }}\n"
-        c += f"        {self.name}_kernel({access_inputs}state);\n"
+            c += ("    const int index = blockIdx.x * blockDim.x + threadIdx.x;\n"
+                  "    if( index >= n_inst ) { return; }\n")
+        access_inputs = ', '.join(f"{inp}[{inp}_indices[index]]" for inp in self.input_names)
+        access_states = ', '.join(f"{state} + index" for state in self.state_names)
+        c += (f"        real* state[{self.num_states}] = {{{access_states}}};\n"
+              f"        {self.name}_kernel({access_inputs}, state);\n")
         if self.target == 'host':
             c +=  "    }\n"
         c +=  "}\n\n"
@@ -102,9 +100,9 @@ class Codegen:
         c += f"__inline__ void {self.name}_kernel("
         for idx in range(len(self.inputs)):
             c += f"real input{idx}, "
-        c += f"real* state[{self.num_states}]) {{\n"
-        c +=  "    const real* __restrict__ tbl_ptr = table;\n"
-        c +=  "    // Locate the input within the look-up table.\n"
+        c += (f"real* state[{self.num_states}]) {{\n"
+               "    const real* __restrict__ tbl_ptr = table;\n"
+               "    // Locate the input within the look-up table.\n")
         for idx, inp in enumerate(self.inputs):
             if isinstance(inp, LinearInput):
                 c += f"    input{idx} = (input{idx} - {inp.minimum}) * {inp.bucket_frq};\n"
@@ -120,59 +118,65 @@ class Codegen:
                 else: raise NotImplementedError(self.target)
                 c += f"    input{idx} = (input{idx} - {inp.log2_minimum}) * {inp.bucket_frq};\n"
             else: raise NotImplementedError(type(inp))
-            c += f"    int bucket{idx} = (int) input{idx};\n"
-            c += f"    if(bucket{idx} > {inp.num_buckets - 1}) {{\n"
-            c += f"        bucket{idx} = {inp.num_buckets - 1};\n"
-            c += f"        input{idx} = 1.0;\n"
-            c +=  "    }\n"
+            c += (f"    int bucket{idx} = (int) input{idx};\n"
+                  f"    if(bucket{idx} > {inp.num_buckets - 1}) {{\n"
+                  f"        bucket{idx} = {inp.num_buckets - 1};\n"
+                  f"        input{idx} = 1.0;\n"
+                   "    }\n")
             if not isinstance(inp, LogarithmicInput): # What could go wrong? It's not like a chemical concentration will ever go negative, right?
-                c += f"    else if(bucket{idx} < 0) {{\n"
-                c += f"        bucket{idx} = 0;\n"
-                c += f"        input{idx} = 0.0;\n"
-                c +=  "    }\n"
-            c +=  "    else {\n"
-            c += f"        input{idx} = input{idx} - bucket{idx};\n"
-            c +=  "    }\n"
+                c += (f"    else if(bucket{idx} < 0) {{\n"
+                      f"        bucket{idx} = 0;\n"
+                      f"        input{idx} = 0.0;\n"
+                       "    }\n")
+            c += ("    else {\n"
+                 f"        input{idx} = input{idx} - bucket{idx};\n"
+                  "    }\n")
         nd_index = []
         stride = 1
         for inp_idx, inp in reversed(list(enumerate(self.inputs))):
             if stride == 1: nd_index.append(f"bucket{inp_idx}")
             else:           nd_index.append(f"bucket{inp_idx} * {stride}")
             stride *= inp.num_buckets
-        c += f"    const int bucket = {' + '.join(nd_index)};\n"
-        c += f"    tbl_ptr += bucket * {self.num_states**2 * (self.num_terms)};\n"
-        c +=  "    // Compute the basis of the polynomial.\n"
+        c += (f"    const int bucket = {' + '.join(nd_index)};\n"
+              f"    tbl_ptr += bucket * {self.num_states**2 * (self.num_terms)};\n"
+               "    // Compute the basis of the polynomial.\n")
         for term_idx, powers in enumerate(self.polynomial):
             factors = []
             for inp_idx, power in enumerate(powers):
                 factors.extend([f"input{inp_idx}"] * power)
             if factors:
                 c += f"    const real term{term_idx} = {' * '.join(factors)};\n"
-        c +=  "\n"
-        c += f"    real scratch[{self.num_states}] = {{{', '.join('0.0' for _ in range(self.num_states))}}};\n"
-        c += f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
-        c +=  "        const real s = *state[col];\n"
-        c += f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
-        c +=  "            // Approximate this entry of the matrix.\n"
+        c += ("\n"
+             f"    real scratch[{self.num_states}] = {{0.0}};\n"
+             f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
+              "        const real s = *state[col];\n"
+             f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
+              "            // Approximate this entry of the matrix.\n")
         terms = []
         for term_idx, powers in enumerate(self.polynomial):
             if any(p > 0 for p in powers):
                 terms.append(f"term{term_idx} * (*tbl_ptr++)")
             else:
                 terms.append("(*tbl_ptr++)")
-        c += f"            const real polynomial = {' + '.join(terms)};\n"
-        c +=  "            scratch[row] += polynomial * s; // Compute the dot product. \n"
-        c +=  "        }\n"
-        c +=  "    }\n"
+        c += (f"            const real polynomial = {' + '.join(terms)};\n"
+               "            scratch[row] += polynomial * s; // Compute the dot product. \n"
+               "        }\n"
+               "    }\n")
         if self.conserve_sum is not None:
-            c +=  "    // Conserve the sum of the states.\n"
-            c +=  "    real sum_states = 0.0;\n"
-            c += f"    for(int x = 0; x < {self.num_states}; ++x) {{ sum_states += scratch[x]; }}\n"
-            c += f"    const real correction_factor = {self.conserve_sum} / sum_states;\n"
-            c += f"    for(int x = 0; x < {self.num_states}; ++x) {{ scratch[x] *= correction_factor; }}\n"
-        c +=  "    // Move the results into the state arrays.\n"
-        c += f"    for(int x = 0; x < {self.num_states}; ++x) {{ *state[x] = scratch[x]; }}\n"
-        c +=  "}\n\n"
+            c += ("    // Conserve the sum of the states.\n"
+                  "    real sum_states = 0.0;\n"
+                 f"    for(int x = 0; x < {self.num_states}; ++x) {{\n"
+                  "        sum_states += scratch[x];\n"
+                  "    }\n"
+                 f"    const real correction_factor = {self.conserve_sum} / sum_states;\n"
+                 f"    for(int x = 0; x < {self.num_states}; ++x) {{\n"
+                  "        scratch[x] *= correction_factor;\n"
+                  "    }\n")
+        c += ("    // Move the results into the state arrays.\n"
+             f"    for(int x = 0; x < {self.num_states}; ++x) {{\n"
+              "        *state[x] = scratch[x];\n"
+              "    }\n"
+              "}\n\n")
         return c
 
     def write(self, filename=None):
@@ -207,8 +211,8 @@ class Codegen:
         arrays.extend(self.state_names)
         dtypes.extend([real_t] * self.num_states)
         maxlen.extend(["=="]   * self.num_states)
-        pycode  = f"def {fn_name}(n_inst, {', '.join(arrays)}):\n"
-        pycode +=  "    n_inst = int(n_inst)\n"
+        pycode = (f"def {fn_name}(n_inst, {', '.join(arrays)}):\n"
+                   "    n_inst = int(n_inst)\n")
         if self.target == 'host':
             for x in arrays:
                 pycode += f"    assert isinstance({x}, numpy.ndarray), 'isinstance({x}, numpy.ndarray)'\n"
@@ -220,9 +224,9 @@ class Codegen:
             pycode += f"    _entrypoint(n_inst, {', '.join(arrays)})\n"
             scope["_entrypoint"] = self._load_entrypoint_host()
         elif self.target == 'cuda':
-            pycode += f"    threads = 32\n"
-            pycode += f"    blocks = (n_inst + (threads - 1)) // threads\n"
-            pycode += f"    _entrypoint((blocks,), (threads,), (n_inst, {', '.join(arrays)}))\n"
+            pycode += ("    threads = 32\n"
+                       "    blocks = (n_inst + (threads - 1)) // threads\n"
+                      f"    _entrypoint((blocks,), (threads,), (n_inst, {', '.join(arrays)}))\n")
             scope["_entrypoint"] = self._load_entrypoint_cuda()
         exec(pycode, scope)
         self._load_cache = fn = scope[fn_name]
@@ -250,7 +254,7 @@ class Codegen:
 
     def _load_entrypoint_cuda(self):
         import cupy
-        fn_name  = self.name + "_advance"
+        fn_name = self.name + "_advance"
         module = cupy.RawModule(code=self.source_code,
                                 name_expressions=[fn_name],
                                 options=('--std=c++11',),)

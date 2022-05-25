@@ -16,33 +16,30 @@ import time
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
 def main(nmodl_filename, inputs, time_step, temperature,
-         accuracy, float_dtype, target,
+         error, float_dtype, target,
          outfile=False, verbose=False, plot=False,):
     # 
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     # 
-    if model.num_inputs == 1:
-        optimizer = Optimize1D(model, accuracy, float_dtype, target)
-    elif model.num_inputs == 2:
-        optimizer = Optimize2D(model, accuracy, float_dtype, target)
-    else:
-        raise NotImplementedError(f'too many inputs.')
-
+    if   model.num_inputs == 1: OptimizerClass = Optimize1D
+    elif model.num_inputs == 2: OptimizerClass = Optimize2D
+    else: raise NotImplementedError('too many inputs.')
+    optimized = OptimizerClass(model, error, float_dtype, target).best
+    # 
     if outfile:
-        optimizer.backend.write(outfile)
-        if outfile != optimizer.backend.filename:
-            print(f'Output written to: "{optimizer.backend.filename}"')
-    if verbose:
-        optimizer.approx.print_summary()
-        mean, std = optimizer.benchmark
-        print(f"Run speed:   {round(mean, 1)} +/- {round(std, 2)}", "ns/Δt")
+        optimized.backend.write(outfile)
+        if outfile != optimized.backend.filename:
+            print(f'Output written to: "{optimized.backend.filename}"')
+    if verbose or plot:
+        print(str(optimized.approx) +
+              f"Run speed:    {round(optimized.runtime)} ns/Δt")
     if plot:
-        optimizer.approx.plot(model.name)
-    return (model.get_initial_state(), optimizer.backend.load())
+        optimized.approx.plot(model.name)
+    return (model.get_initial_state(), optimized.backend.load())
 
 def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
     num_instances = 10 * 1000
-    num_repetions = 1000
+    num_repetions = 200
     # 
     if target == 'host':
         xp = np
@@ -71,6 +68,7 @@ def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
             input_arrays.append(inp.random(num_instances, float_dtype, xp))
             input_arrays.append(input_indicies)
         _clear_cache(xp)
+        time.sleep(0) # Try to avoid task switching while running.
         if target == 'cuda':
             start_event.record()
             f(num_instances, *input_arrays, *state)
@@ -81,13 +79,11 @@ def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
             start_time = time.thread_time_ns()
             f(num_instances, *input_arrays, *state)
             elapsed_times[trial] = time.thread_time_ns() - start_time
-    elapsed_times /= num_instances
-    return (np.mean(elapsed_times), np.std(elapsed_times))
+    return np.min(elapsed_times) / num_instances
 
 def _clear_cache(array_module):
-    big_data = array_module.zeros(int(2e6))
-    for _ in range(3):
-        big_data += 1.0
-
-if __name__ == '__main__':
-    import __main__
+    # Read and then write back 32MB of data. Assuming that the CPU is using a
+    # least-recently-used replacement policy, touching every piece of data once
+    # should be sufficient to put it into the cache.
+    big_data = array_module.empty(int(32e6 / 8), dtype=np.int64)
+    big_data += 1
