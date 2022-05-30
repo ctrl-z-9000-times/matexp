@@ -4,8 +4,9 @@ import math
 import numpy as np
 
 class MatrixSamples:
-    def __init__(self, model):
+    def __init__(self, model, verbose=False):
         self.model   = model
+        self.verbose = bool(verbose)
         self.inputs  = [np.empty(0) for _ in range(model.num_inputs)]
         self.samples = np.empty((0, model.num_states, model.num_states))
 
@@ -49,6 +50,7 @@ class MatrixSamples:
                 values[end-num:end] += idx
         sample_inputs = [inp.get_input_value(values) for inp, values in zip(self.model.inputs, sample_buckets)]
         # Sample the matrix.
+        if self.verbose: print(f'Collecting {total_new} matrix samples ... ', end='', flush=True)
         sample_matrices = [self.samples]
         for input_value in zip(*sample_inputs):
             matrix = self.model.make_matrix(input_value)
@@ -57,6 +59,7 @@ class MatrixSamples:
         for dim in range(self.model.num_inputs):
             self.inputs[dim] = np.concatenate((self.inputs[dim], sample_inputs[dim]))
         self.samples = np.concatenate(sample_matrices)
+        if self.verbose: print('done')
 
     def sort(self):
         if len(self.samples) == 0: return

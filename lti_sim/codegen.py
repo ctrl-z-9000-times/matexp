@@ -4,6 +4,7 @@ Backend for generating the run-time program, compiling it, and loading it into p
 
 from .inputs import LinearInput, LogarithmicInput
 import ctypes
+import datetime
 import numpy as np
 import os.path
 import subprocess
@@ -13,8 +14,7 @@ class Codegen:
     def __init__(self, table, float_dtype, target):
         self.model          = table.model
         self.table          = table.table
-        self.polynomial     = table.polynomial.terms
-        self.num_terms      = table.num_terms
+        self.polynomial     = table.polynomial
         self.float_dtype    = float_dtype
         self.target         = target
         self.name           = self.model.name
@@ -25,7 +25,6 @@ class Codegen:
         self.conserve_sum   = self.model.conserve_sum
         self.initial_state  = self.model.get_initial_state()
         assert self.num_states >= 0
-        assert self.num_terms > 0
         assert self.float_dtype in (np.float32, np.float64)
         assert self.target in ('host', 'cuda')
         self.source_code = (
@@ -36,7 +35,16 @@ class Codegen:
                 self._entrypoint())
 
     def _preamble(self):
-        c = ""
+        c = (f"/{'*'*69}\n"
+             f"Model Name   : {self.name}\n"
+             f"Filename     : {self.model.nmodl_filename}\n"
+             f"Created      : {datetime.datetime.now()}\n"
+             f"Time Step    : {self.model.time_step} ms\n"
+             f"Temperature  : {self.model.temperature} C\n"
+             f"Max Error    : {getattr(self.model, 'target_error', None)}\n"
+             f"Target       : {self.float_dtype.__name__} {self.target}\n"
+             f"Polynomial   : {self.polynomial}\n"
+             f"{'*'*69}/\n\n")
         if self.target == 'host':
             if any(isinstance(inp, LogarithmicInput) for inp in self.inputs):
                 c += "#include <math.h>       /* log2 */\n\n"
@@ -56,11 +64,11 @@ class Codegen:
 
     def _table_data(self):
         # Check table size matches what's expected.
-        table_size = (self.num_states ** 2) * (self.num_terms)
+        table_size = (self.num_states ** 2) * (self.polynomial.num_terms)
         for inp in self.inputs: table_size *= inp.num_buckets
         assert self.table.size == table_size
-        # 
-        table_data = self.table.reshape(-1, self.num_states, self.num_states, self.num_terms) # Flatten the input dimensions.
+        # Flatten the input dimensions.
+        table_data = self.table.reshape(-1, self.num_states, self.num_states, self.polynomial.num_terms)
         table_data = table_data.transpose(0, 2, 1, 3) # Switch from row-major to column-major format.
         table_data = np.array(table_data, dtype=self.float_dtype)
         data_str   = ',\n    '.join((','.join(str(x) for x in bucket.flat)) for bucket in table_data)
@@ -138,9 +146,9 @@ class Codegen:
             else:           nd_index.append(f"bucket{inp_idx} * {stride}")
             stride *= inp.num_buckets
         c += (f"    const int bucket = {' + '.join(nd_index)};\n"
-              f"    tbl_ptr += bucket * {self.num_states**2 * (self.num_terms)};\n"
+              f"    tbl_ptr += bucket * {self.num_states**2 * (self.polynomial.num_terms)};\n"
                "    // Compute the basis of the polynomial.\n")
-        for term_idx, powers in enumerate(self.polynomial):
+        for term_idx, powers in enumerate(self.polynomial.terms):
             factors = []
             for inp_idx, power in enumerate(powers):
                 factors.extend([f"input{inp_idx}"] * power)
@@ -153,7 +161,7 @@ class Codegen:
              f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
               "            // Approximate this entry of the matrix.\n")
         terms = []
-        for term_idx, powers in enumerate(self.polynomial):
+        for term_idx, powers in enumerate(self.polynomial.terms):
             if any(p > 0 for p in powers):
                 terms.append(f"term{term_idx} * (*tbl_ptr++)")
             else:
@@ -181,10 +189,12 @@ class Codegen:
 
     def write(self, filename=None):
         if filename is None or filename is True:
+            nmodl_filename = os.path.basename(self.model.nmodl_filename)
+            nmodl_filename = os.path.splitext(nmodl_filename)[0]
             if self.target == 'cuda':
-                self.filename = self.name + '.cu'
+                self.filename = nmodl_filename + '.cu'
             elif self.target == 'host':
-                self.filename = self.name + '.cpp'
+                self.filename = nmodl_filename + '.cpp'
         else:
             self.filename = str(filename)
         self.filename = os.path.abspath(self.filename)

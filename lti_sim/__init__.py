@@ -18,13 +18,13 @@ __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 def main(nmodl_filename, inputs, time_step, temperature,
          error, float_dtype, target,
          outfile=False, verbose=False, plot=False,):
-    # 
+    # Read, parse, and preprocess the input file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     # 
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
     elif model.num_inputs == 2: OptimizerClass = Optimize2D
     else: raise NotImplementedError('too many inputs.')
-    optimized = OptimizerClass(model, error, float_dtype, target).best
+    optimized = OptimizerClass(model, error, float_dtype, target, (verbose >= 2)).best
     # 
     if outfile:
         optimized.backend.write(outfile)

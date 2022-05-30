@@ -34,8 +34,8 @@ sim.add_argument('-o', '--output', type=str, default=True,
         help="")
 parser.add_argument('--plot', action='store_true',
         help="show the matrix")
-parser.add_argument('-v', '--verbose', action='store_true',
-        help="show diagnostic information")
+parser.add_argument('-v', '--verbose', action='count', default=0,
+        help="show diagnostic information, give twice for trace info")
 args = parser.parse_args()
 
 if   args.float == '32': float_dtype = np.float32

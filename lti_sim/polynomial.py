@@ -86,7 +86,11 @@ class PolynomialForm:
                 new_poly = self._from_perimeter(self.inputs, terms_set)
                 suggestions.add(new_poly)
         suggestions.discard(self)
-        return list(suggestions)
+        # Sort the suggestions from worst to best, so that the caller can pop
+        # suggestions off of the end of the list.
+        #   * Suggest removing the highest degree terms first.
+        #   * Suggest adding the lowest degree terms first.
+        return sorted(suggestions, key=lambda p: sum(sum(term) for term in p.terms), reverse=True)
 
     def suggest_add(self) -> ['PolynomialForm']:
         return self._suggest(True)
