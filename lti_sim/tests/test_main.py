@@ -38,12 +38,11 @@ def test_nmda():
     output_file = os.path.join(directory, 'tmp.cu')
     if os.path.exists(output_file): os.remove(output_file)
     subprocess.run(['python', '-m', 'lti_sim', test_file,
-            '-t', '0.1', '-c', '37',
-            '-i', 'v', '-120', '120',
-            '-i', 'C', '0', '1e3', '--log', 'C',
+            '-t', '0.1',
+            # Test default inputs.
             '--target', 'cuda',
             '-e', '1e-3',
-            '-v',
+            '-vv',
             '-o', output_file],
             check=True,)
     with open(output_file, 'rt') as f:

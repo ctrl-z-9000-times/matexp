@@ -2,7 +2,6 @@ from .approx import MatrixSamples, Approx1D, Approx2D
 from .codegen import Codegen
 from .inputs import LinearInput, LogarithmicInput
 from .polynomial import PolynomialForm
-import lti_sim
 import collections.abc
 import math
 import numpy as np
@@ -68,7 +67,8 @@ class Parameters:
                 self.approx,
                 self.optimizer.float_dtype,
                 self.optimizer.target)
-        self.runtime = lti_sim._measure_speed(
+        from . import _measure_speed # Import just before using to avoid circular imports.
+        self.runtime = _measure_speed(
                 self.backend.load(),
                 self.model.num_states,
                 self.model.inputs,

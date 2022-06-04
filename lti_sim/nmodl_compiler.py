@@ -9,7 +9,7 @@ import re
 import nmodl.ast
 import nmodl.dsl
 import nmodl.symtab
-import lti_sim.inputs
+from .inputs import (Input, LinearInput, LogarithmicInput)
 
 ANT = nmodl.ast.AstNodeType
 
@@ -92,12 +92,16 @@ class NMODL_Compiler:
             input_symbols.append(x.get_node_name())
         for x in self.lookup(ANT.BBCORE_POINTER_VAR):
             input_symbols.append(x.get_node_name())
-        # Match up the expected inputs with the given Input data structures.
-        assert all(isinstance(inp, lti_sim.inputs.Input) for inp in inputs)
+        # Check argument "inputs".
+        if not inputs:
+            inputs = self._get_default_inputs(input_symbols)
+        assert all(isinstance(inp, Input) for inp in inputs)
+        # Match up the expected inputs with the given "Input" data structures.
         inputs = {inp.name: inp for inp in inputs}
         try:
             self.inputs = [inputs[name] for name in sorted(input_symbols)]
-        except KeyError:
+            assert len(inputs) == len(input_symbols)
+        except (KeyError, AssertionError):
             expected_inputs = ' & '.join(input_symbols)
             received_inputs = ' & '.join(inputs.keys())
             raise ValueError(f'Invalid inputs, expected {expected_inputs} got {received_inputs}')
@@ -106,6 +110,15 @@ class NMODL_Compiler:
         # Make aliases "input1", "input2", etc.
         for inp_idx, inp in enumerate(self.inputs):
             setattr(self, f"input{inp_idx+1}", inp)
+
+    def _get_default_inputs(self, input_symbols):
+        inputs = []
+        for name in sorted(input_symbols):
+            if name == "v":
+                inputs.append(LinearInput(name, -120, 120))
+            else:
+                inputs.append(LogarithmicInput(name, 0, 1000))
+        return inputs
 
     def _compile_derivative_block(self, temperature):
         scope = {'celsius': float(temperature)} # Allow NMODL file to override temperature.

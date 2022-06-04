@@ -6,7 +6,7 @@ from .inputs import LinearInput, LogarithmicInput
 import ctypes
 import datetime
 import numpy as np
-import os.path
+import os
 import subprocess
 import tempfile
 
@@ -29,7 +29,7 @@ class Codegen:
         assert self.target in ('host', 'cuda')
         self.source_code = (
                 self._preamble() +
-                self._initial_state() +
+                # self._initial_state() +
                 self._table_data() +
                 self._kernel() +
                 self._entrypoint())
@@ -240,6 +240,7 @@ class Codegen:
             scope["_entrypoint"] = self._load_entrypoint_cuda()
         exec(pycode, scope)
         self._load_cache = fn = scope[fn_name]
+        fn._call_from_NEURON = self._call_from_NEURON()
         return fn
 
     def _load_entrypoint_host(self):
@@ -260,6 +261,8 @@ class Codegen:
             argtypes.append(np.ctypeslib.ndpointer(dtype=self.float_dtype, ndim=1, flags='C'))
         fn.argtypes = argtypes
         fn.restype = None
+        os.remove(src_file.name)
+        os.remove(so_file.name)
         return fn
 
     def _load_entrypoint_cuda(self):
@@ -269,3 +272,8 @@ class Codegen:
                                 name_expressions=[fn_name],
                                 options=('--std=c++11',),)
         return module.get_function(fn_name)
+
+    def _call_from_NEURON(self):
+        inputs = ", ".join(self.input_names)
+        states = ", ".join(self.state_names)
+        return f"{self.name}_kernel({inputs}, {{{states}}});"

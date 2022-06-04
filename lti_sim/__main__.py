@@ -13,7 +13,7 @@ params.add_argument('-t', '--time_step', type=float, required=True,
 params.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")
 inputs = parser.add_argument_group('input specification')
-inputs.add_argument('-i', '--input', action='append', required=True,
+inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=3, metavar=('NAME', 'MIN', 'MAX'),
         help="")
 inputs.add_argument('--log', nargs='?', action='append', default=[],
