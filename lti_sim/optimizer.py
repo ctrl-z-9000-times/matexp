@@ -140,7 +140,7 @@ class Optimizer:
             new.benchmark()
             if new.runtime < self.best.runtime:
                 self.best = new
-                if self.verbose: print(f'New best: polynomial {self.best.polynomial} bins {self.best.num_buckets}\n')
+                if self.verbose: print(f'New best: polynomial ({self.best.polynomial}) bins {self.best.num_buckets}\n')
                 experiment_queue = self.best.polynomial.suggest_remove()
         # Try adding more terms to the polynomial.
         experiment_queue = self.best.polynomial.suggest_add()
@@ -153,7 +153,7 @@ class Optimizer:
             new.benchmark()
             if new.runtime < self.best.runtime:
                 self.best = new
-                if self.verbose: print(f'New best: polynomial {self.best.polynomial} bins {self.best.num_buckets}\n')
+                if self.verbose: print(f'New best: polynomial ({self.best.polynomial}) bins {self.best.num_buckets}\n')
                 experiment_queue = self.best.polynomial.suggest_add()
         self.best.set_num_buckets()
 

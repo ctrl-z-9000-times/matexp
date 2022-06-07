@@ -100,11 +100,11 @@ def plot_accuracy_vs_timestep():
     time_steps_ns = [100, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000]
     time_steps_ms = [ts/1000/1000 for ts in time_steps_ns]
     print("Measuring RMS-Error at time steps:", time_steps_ms)
-    exact_accuracy  = 1e-12
-    target_accuracy = 1e-6
+    exact_accuracy  = 1e-9
+    target_accuracy = 1e-4
     nav  = True
     ampa = True
-    nmda = False
+    nmda = True
     if nav:
         nav11_exact = nav11_lti_sim(time_steps_ms[0], exact_accuracy)
         # Nav11 Backward Euler
@@ -118,7 +118,7 @@ def plot_accuracy_vs_timestep():
         nav11_me_err = measure_accuracy([voltage_input], 6, nav11_me_fn, time_steps_ns)
         print("Nav11 Matrix Exponential:", nav11_me_err)
     if ampa:
-        ampa_exact  = ampa_lti_sim( time_steps_ms[0], exact_accuracy)
+        ampa_exact = ampa_lti_sim(time_steps_ms[0], exact_accuracy)
         # AMPA Receptor Backward Euler
         ampa_be_fn = [load_cpp("ampa13.cpp", 1, 13, ts, 1) for ts in time_steps_ms[1:]]
         ampa_be_fn.insert(0, ampa_exact)
@@ -130,7 +130,7 @@ def plot_accuracy_vs_timestep():
         ampa_me_err = measure_accuracy([glu_input], 13, ampa_me_fn, time_steps_ns)
         print("AMPA Matrix Exponential:", ampa_me_err)
     if nmda:
-        nmda_exact  = nmda_lti_sim( time_steps_ms[0], exact_accuracy)
+        nmda_exact = nmda_lti_sim(time_steps_ms[0], 1e-6) # NOTE: 2D models struggle to achieve exact accuracy.
         # NMDA Receptor Backward Euler
         nmda_be_fn = [load_cpp("NMDA.cpp", 2, 10, ts, 1) for ts in time_steps_ms[1:]]
         nmda_be_fn.insert(0, nmda_exact)
@@ -160,70 +160,81 @@ def measure_speed(fn, num_states, inputs):
                                   float_dtype = np.float64, target = 'host')
 
 def plot_speed():
+    err = 1e-4
     # Nav11 Backward Euler
+    print("Nav11 Speed Comparison:")
     fn = load_cpp("Nav11.cpp", 1, 6, 0.1, opt_level=1)
     nav11_be = measure_speed(fn, 6, [voltage_input])
-    # Nav11 Matrix Exponential
-    fn = nav11_lti_sim(0.1, 1e-6)
-    nav11_me = measure_speed(fn, 6, [voltage_input])
-    print("Nav11 Speed Comparison:")
     print('BE', nav11_be)
+    # Nav11 Matrix Exponential
+    fn = nav11_lti_sim(0.1, err)
+    nav11_me = measure_speed(fn, 6, [voltage_input])
     print('ME', nav11_me)
     # AMPA Receptor Backward Euler
+    print("AMPA Receptor Speed Comparison:")
     fn = load_cpp("ampa13.cpp", 1, 13, 0.1, opt_level=1)
     ampa_be = measure_speed(fn, 13, [glu_input])
-    # AMPA Receptor Matrix Exponential
-    fn = ampa_lti_sim(0.1, 1e-6)
-    ampa_me = measure_speed(fn, 13, [glu_input])
-    print("AMPA Receptor Speed Comparison:")
     print('BE', ampa_be)
+    # AMPA Receptor Matrix Exponential
+    fn = ampa_lti_sim(0.1, err)
+    ampa_me = measure_speed(fn, 13, [glu_input])
     print('ME', ampa_me)
     # NMDA Receptor Backward Euler
-    # fn = load_cpp("NMDA.cpp", 2, 10, 0.1, opt_level=1)
-    # nmda_be = measure_speed(fn, 10, [glu_input, voltage_input])
+    print("NMDA Receptor Speed Comparison:")
+    fn = load_cpp("NMDA.cpp", 2, 10, 0.1, opt_level=1)
+    nmda_be = measure_speed(fn, 10, [glu_input, voltage_input])
+    print('BE', nmda_be)
     # NMDA Receptor Matrix Exponential
-    # fn = nmda_lti_sim(0.1, 1e-6)
-    # nmda_me = measure_speed(fn, 10, [glu_input, voltage_input])
-    # nmda_me = 0
-    # print("NMDA Receptor Speed Comparison:")
-    # print('BE', nmda_be)
-    # print('ME', nmda_me)
+    fn = nmda_lti_sim(0.1, err)
+    nmda_me = measure_speed(fn, 10, [glu_input, voltage_input])
+    print('ME', nmda_me)
     print()
     # 
     plt.figure('Speed Comparison')
     plt.title('Real Time to Integrate, per Instance per Time Step')
-    x = np.arange(2)
+    x = np.arange(3)
     width = 1/3
-    plt.bar(x-width/2, [nav11_be, ampa_be,],
+    plt.bar(x-width/2, [nav11_be, nmda_be, ampa_be,],
         width=width,
         label='Backward Euler')
-    plt.bar(x+width/2, [nav11_me, ampa_me,],
+    plt.bar(x+width/2, [nav11_me, nmda_me, ampa_me,],
         width=width,
-        label='Matrix Exponential,\nMaximum Error: 1e-6')
+        label='Matrix Exponential,\nMaximum Error: %g'%err)
     plt.ylabel('Nanoseconds')
     plt.xticks(x, ["Nav11 Channel\n6 States\n1 Input",
-                   # "NMDA Receptor\n10 States\n2 Inputs",
+                   "NMDA Receptor\n10 States\n2 Inputs",
                    "AMPA Receptor\n13 States\n1 Input",])
     plt.legend()
     plt.show()
 
 def plot_speed_vs_accuracy():
     max_err = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
+    print("Target accuracies", max_err)
     nav11_speed = []
     for x in max_err:
         fn = nav11_lti_sim(0.1, x)
         nav11_speed.append(measure_speed(fn, 6, [voltage_input]))
+    print("Nav11 speeds", nav11_speed)
     ampa_speed = []
     for x in max_err:
         fn = ampa_lti_sim(0.1, x)
         ampa_speed.append(measure_speed(fn, 13, [glu_input]))
+    print("AMPA speeds", ampa_speed)
+    nmda_max_err = [1e-2, 1e-3, 1e-4]
+    nmda_speed = []
+    for x in nmda_max_err:
+        fn = nmda_lti_sim(0.1, x)
+        nmda_speed.append(measure_speed(fn, 10, [glu_input, voltage_input]))
+    print("NMDA speeds", nmda_speed)
+    print()
     # 
     plt.figure('Speed/Accuracy Trade-off')
     plt.title('Simulation Speed vs Accuracy')
     plt.ylabel('Real Time to Integrate, per Instance per Time Step\nNanoseconds')
     plt.xlabel('Maximum Absolute Error')
-    plt.semilogx(max_err, nav11_speed, label='Nav11, 6 States')
-    plt.semilogx(max_err, ampa_speed,  label='AMPA Receptor, 13 States')
+    plt.semilogx(max_err, nav11_speed, label='Nav11, 6 States, 1 Input')
+    plt.semilogx(max_err, ampa_speed, label='AMPA Receptor, 13 States, 1 Input')
+    plt.semilogx(nmda_max_err, nmda_speed, label='NMDA Receptor, 10 States, 2 Inputs')
     plt.ylim(bottom=0.0)
     plt.legend()
     plt.show()
