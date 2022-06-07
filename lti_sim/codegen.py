@@ -275,5 +275,7 @@ class Codegen:
 
     def _call_from_NEURON(self):
         inputs = ", ".join(self.input_names)
-        states = ", ".join(self.state_names)
-        return f"{self.name}_kernel({inputs}, {{{states}}});"
+        states = ", ".join(f'& {x}' for x in self.state_names)
+        return (
+            f"real* state[{self.num_states}] = {{{states}}};\n"
+            f"{self.name}_kernel({inputs}, state);")
