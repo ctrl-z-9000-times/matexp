@@ -6,11 +6,12 @@ For more information see:
  *  Exact digital simulation of time-invariant linear systems with applications
     to neuronal modeling. Rotter S, Diesmann M (1999). 
     https://doi.org/10.1007/s004220050570
+ *  [Presentation for the NEURON developers meeting](./presentation.pdf)
 
 ### Usage
 
 ```
-$ python ./lti_sim/ --help
+$ python lti_sim --help
 ```
 
 Chemical concentration inputs should be preprocessed using the logarithmic option.
