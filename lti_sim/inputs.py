@@ -7,20 +7,15 @@ import numpy as np
 
 class Input:
     """ Abstract base class. """
-    def __init__(self, name, minimum, maximum, initial=None):
+    def __init__(self, name, minimum, maximum):
         self.name       = str(name)
         self.minimum    = float(minimum)
         self.maximum    = float(maximum)
         self.range      = self.maximum - self.minimum
         assert self.minimum < self.maximum
-        if initial is None:
-            self.initial = self.minimum
-        else:
-            self.initial = float(initial)
-            assert self.minimum <= self.initial < self.maximum
 
     def __repr__(self):
-        return f"lti_sim.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum}, initial={self.initial})"
+        return f"lti_sim.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum})"
 
     def __eq__(self, other):
         return repr(self) == repr(other)
@@ -86,8 +81,8 @@ class LinearInput(Input):
 
 class LogarithmicInput(Input):
     """ """
-    def __init__(self, name, minimum, maximum, initial=None):
-        super().__init__(name, minimum, maximum, initial)
+    def __init__(self, name, minimum, maximum):
+        super().__init__(name, minimum, maximum)
         assert self.minimum == 0.0, 'Logarithmic inputs must have minimum value of 0.'
 
     def set_num_buckets(self, num_buckets, scale=None):

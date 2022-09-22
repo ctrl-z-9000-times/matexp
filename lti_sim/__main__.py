@@ -19,9 +19,6 @@ inputs.add_argument('-i', '--input', action='append', default=[],
 inputs.add_argument('--log', nargs='?', action='append', default=[],
         metavar='INPUT',
         help="scale the input logarithmically")
-inputs.add_argument('--initial', nargs=2, action='append', default=[],
-        metavar=('INPUT', 'VALUE'),
-        help="default: the input's minimum value")
 sim = parser.add_argument_group('simulator arguments')
 sim.add_argument('-e', '--error', type=float, default=1e-4,
         help="maximum error per time step. default: 10^-4")
@@ -44,7 +41,7 @@ elif args.float == '64': float_dtype = np.float64
 # Gather & organize all information about the inputs.
 inputs = {}
 for (name, minimum, maximum) in args.input:
-    inputs[name] = [LinearInput, [name, minimum, maximum, None]]
+    inputs[name] = [LinearInput, (name, minimum, maximum)]
 for name in args.log:
     if name is None:
         if len(inputs) == 1:
@@ -54,10 +51,6 @@ for name in args.log:
     elif name not in inputs:
         parser.error(f'Argument "--log {name}" does not match any input name.')
     inputs[name][0] = LogarithmicInput
-for name, initial_value in args.initial:
-    if name not in inputs:
-        parser.error(f'Argument "--initial {name}" does not match any input name.')
-    inputs[name][1][3] = float(initial_value)
 # Create the input data structures.
 inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 

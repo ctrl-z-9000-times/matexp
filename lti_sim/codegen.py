@@ -23,13 +23,11 @@ class Codegen:
         self.state_names    = self.model.state_names
         self.num_states     = self.model.num_states
         self.conserve_sum   = self.model.conserve_sum
-        self.initial_state  = self.model.get_initial_state()
         assert self.num_states >= 0
         assert self.float_dtype in (np.float32, np.float64)
         assert self.target in ('host', 'cuda')
         self.source_code = (
                 self._preamble() +
-                # self._initial_state() +
                 self._table_data() +
                 self._kernel() +
                 self._entrypoint())
@@ -53,13 +51,6 @@ class Codegen:
         elif self.float_dtype == np.float64:
             c +=  "typedef double real;\n\n"
         else: raise NotImplementedError(self.float_dtype)
-        return c
-
-    def _initial_state(self):
-        c = ""
-        for name, value in sorted(self.initial_state.items()):
-            c += f"const real {name}0 = {value};\n"
-        c += "\n"
         return c
 
     def _table_data(self):

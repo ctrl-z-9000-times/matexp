@@ -12,6 +12,7 @@ For more information see:
 from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
+from .codegen import get_filename
 import numpy as np
 import time
 
@@ -37,7 +38,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
               f"Run speed:    {round(optimized.runtime)} ns/Δt")
     if plot:
         optimized.approx.plot(model.name)
-    return (model.get_initial_state(), optimized.backend.load())
+    return optimized.backend.load()
 
 def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
     num_instances = 10 * 1000

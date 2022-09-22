@@ -18,10 +18,6 @@ def test_Nav11():
     assert x.state_names == sorted(x.state_names)
     assert x.conserve_sum == 1.0
     assert x.parameters['C1C2b2'] == 18
-    initial_state = x.get_initial_state()
-    assert initial_state.pop('C1') == pytest.approx(1)
-    for value in initial_state.values():
-        assert value == pytest.approx(0, abs=1e-6)
 
 def test_AMPA():
     nmodl_file = os.path.join(test_dir, "ampa13.mod")
@@ -35,10 +31,6 @@ def test_AMPA():
     assert x.state_names == sorted(x.state_names)
     assert x.conserve_sum == 1.0
     assert x.parameters['Rb1'] == 800
-    initial_state = x.get_initial_state()
-    assert initial_state.pop('C0') == pytest.approx(1)
-    for value in initial_state.values():
-        assert value == pytest.approx(0, abs=1e-6)
 
 def test_NMDA():
     nmodl_file = os.path.join(test_dir, "NMDA.mod")
@@ -54,10 +46,6 @@ def test_NMDA():
     assert x.state_names == sorted(x.state_names)
     assert x.conserve_sum == 1.0
     assert x.parameters['Rb'] == 10e-3
-    initial_state = x.get_initial_state()
-    assert initial_state.pop('UMg') == pytest.approx(1)
-    for value in initial_state.values():
-        assert value == pytest.approx(0, abs=1e-6)
 
 def test_nonlinear():
     nmodl_file = os.path.join(test_dir, "nonlinear.mod")

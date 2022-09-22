@@ -19,9 +19,9 @@ ampa_mod  = os.path.join(py_dir, "tests", "ampa13.mod")
 nmda_mod  = os.path.join(py_dir, "tests", "NMDA.mod")
 
 lti_kwargs = {'temperature': 37.0, 'float_dtype': np.float64, 'target': 'host'}
-nav11_lti_sim = lambda ts, err: lti_sim.main(nav11_mod, [voltage_input], ts, error=err, **lti_kwargs)[1]
-ampa_lti_sim = lambda ts, err: lti_sim.main(ampa_mod, [glu_input], ts, error=err, **lti_kwargs)[1]
-nmda_lti_sim = lambda ts, err: lti_sim.main(nmda_mod, [glu_input, voltage_input], ts, error=err, **lti_kwargs)[1]
+nav11_lti_sim = lambda ts, err: lti_sim.main(nav11_mod, [voltage_input], ts, error=err, **lti_kwargs)
+ampa_lti_sim = lambda ts, err: lti_sim.main(ampa_mod, [glu_input], ts, error=err, **lti_kwargs)
+nmda_lti_sim = lambda ts, err: lti_sim.main(nmda_mod, [glu_input, voltage_input], ts, error=err, **lti_kwargs)
 
 def load_cpp(filename, num_inputs, num_states, TIME_STEP, opt_level=1):
     """ Compile one of the Backward Euler C++ files and link it into python. """

@@ -35,16 +35,3 @@ class LTI_Model(NMODL_Compiler):
         for col in range(self.num_states):
             matrix[:, col] *= 1.0 / sum(matrix[:, col].flat)
         return matrix
-
-    def get_initial_state(self):
-        if x := getattr(self, '_initial_state_cache', None): return x
-        if self.conserve_sum is None:
-            initial_state   = np.zeros(self.num_states)
-        else:
-            time_step       = 3600e3 # 1 hour in milliseconds.
-            inputs          = [inp.initial for inp in self.inputs]
-            matrix          = self.make_matrix(inputs, time_step)
-            valid_state     = np.full(self.num_states, self.conserve_sum / self.num_states)
-            initial_state   = matrix.dot(valid_state)
-        self._initial_state_cache = x = dict(zip(self.state_names, initial_state))
-        return x
