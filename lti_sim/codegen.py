@@ -188,16 +188,7 @@ class Codegen:
         return c
 
     def write(self, filename=None):
-        if filename is None or filename is True:
-            nmodl_filename = os.path.basename(self.model.nmodl_filename)
-            nmodl_filename = os.path.splitext(nmodl_filename)[0]
-            if self.target == 'cuda':
-                self.filename = nmodl_filename + '.cu'
-            elif self.target == 'host':
-                self.filename = nmodl_filename + '.cpp'
-        else:
-            self.filename = str(filename)
-        self.filename = os.path.abspath(self.filename)
+        self.filename = get_filename(filename, self.model.nmodl_filename, self.target)
         with open(self.filename, 'wt') as f:
             f.write(self.source_code)
             f.flush()
@@ -234,7 +225,7 @@ class Codegen:
             pycode += f"    _entrypoint(n_inst, {', '.join(arrays)})\n"
             scope["_entrypoint"] = self._load_entrypoint_host()
         elif self.target == 'cuda':
-            pycode += ("    threads = 32\n"
+            pycode += ("    threads = 32 * 4\n"
                        "    blocks = (n_inst + (threads - 1)) // threads\n"
                       f"    _entrypoint((blocks,), (threads,), (n_inst, {', '.join(arrays)}))\n")
             scope["_entrypoint"] = self._load_entrypoint_cuda()
@@ -279,3 +270,15 @@ class Codegen:
         return (
             f"real* state[{self.num_states}] = {{{states}}};\n"
             f"{self.name}_kernel({inputs}, state);")
+
+def get_filename(outfile, nmodl_filename, target):
+    if outfile is None or outfile is True:
+        nmodl_filename = os.path.basename(nmodl_filename)
+        nmodl_filename = os.path.splitext(nmodl_filename)[0]
+        if target == 'cuda':
+            filename = nmodl_filename + '.cu'
+        elif target == 'host':
+            filename = nmodl_filename + '.cpp'
+    else:
+        filename = str(outfile)
+    return os.path.abspath(filename)

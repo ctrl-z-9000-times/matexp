@@ -22,6 +22,9 @@ class Input:
     def __repr__(self):
         return f"lti_sim.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum}, initial={self.initial})"
 
+    def __eq__(self, other):
+        return repr(self) == repr(other)
+
     def set_num_buckets(self, num_buckets):
         self.num_buckets = int(num_buckets)
         assert self.num_buckets >= 1

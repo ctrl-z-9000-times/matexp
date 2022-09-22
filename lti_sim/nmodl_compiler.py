@@ -1,5 +1,5 @@
 """
-Frontend for reading the users NMODL files, extracting key information, and
+Front-end for reading the users NMODL files, extracting key information, and
 evaluating the DERIVATIVE blocks contained in them.
 """
 
