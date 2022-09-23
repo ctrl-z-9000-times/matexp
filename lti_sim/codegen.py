@@ -178,12 +178,6 @@ class Codegen:
               "}\n\n")
         return c
 
-    def write(self, filename=None):
-        self.filename = get_filename(filename, self.model.nmodl_filename, self.target)
-        with open(self.filename, 'wt') as f:
-            f.write(self.source_code)
-            f.flush()
-
     def load(self):
         if fn := getattr(self, "_load_cache", False): return fn
         fn_name  = self.name + "_advance"
@@ -229,7 +223,9 @@ class Codegen:
         src_file = tempfile.NamedTemporaryFile(prefix=self.name+'_', suffix='.cpp', delete=False)
         so_file  = tempfile.NamedTemporaryFile(prefix=self.name+'_', suffix='.so', delete=False)
         src_file.close(); so_file.close()
-        self.write(src_file.name)
+        with open(src_file.name, 'wt') as f:
+            f.write(self.source_code)
+            f.flush()
         subprocess.run(["g++", src_file.name, "-o", so_file.name,
                         "-shared", "-O3"],
                         check=True)
@@ -261,15 +257,3 @@ class Codegen:
         return (
             f"real* state[{self.num_states}] = {{{states}}};\n"
             f"{self.name}_kernel({inputs}, state);")
-
-def get_filename(outfile, nmodl_filename, target):
-    if outfile is None or outfile is True:
-        nmodl_filename = os.path.basename(nmodl_filename)
-        nmodl_filename = os.path.splitext(nmodl_filename)[0]
-        if target == 'cuda':
-            filename = nmodl_filename + '.cu'
-        elif target == 'host':
-            filename = nmodl_filename + '.cpp'
-    else:
-        filename = str(outfile)
-    return os.path.abspath(filename)

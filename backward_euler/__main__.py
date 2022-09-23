@@ -18,7 +18,7 @@ nav11_mod = os.path.join(py_dir, "tests", "Nav11.mod")
 ampa_mod  = os.path.join(py_dir, "tests", "ampa13.mod")
 nmda_mod  = os.path.join(py_dir, "tests", "NMDA.mod")
 
-lti_kwargs = {'temperature': 37.0, 'float_dtype': np.float64, 'target': 'host'}
+lti_kwargs = {'temperature': 37.0, 'float_dtype': np.float64, 'target': 'host', 'load': True}
 nav11_lti_sim = lambda ts, err: lti_sim.main(nav11_mod, [voltage_input], ts, error=err, **lti_kwargs)
 ampa_lti_sim = lambda ts, err: lti_sim.main(ampa_mod, [glu_input], ts, error=err, **lti_kwargs)
 nmda_lti_sim = lambda ts, err: lti_sim.main(nmda_mod, [glu_input, voltage_input], ts, error=err, **lti_kwargs)

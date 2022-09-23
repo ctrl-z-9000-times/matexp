@@ -5,7 +5,7 @@ import numpy as np
 parser = argparse.ArgumentParser(prog='lti_sim',
         description="Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.",)
 parser.add_argument('nmodl_filename',
-        metavar='NMODL_FILE',
+        metavar='NMODL_FILENAME',
         help="")
 params = parser.add_argument_group('model parameters')
 params.add_argument('-t', '--time_step', type=float, required=True,
@@ -26,9 +26,8 @@ sim.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
 sim.add_argument('-f', '--float', choices=['32','64'], default='64',
         help="default: 64")
-sim.add_argument('-o', '--output', type=str, default=True,
-        metavar='FILE',
-        help="")
+sim.add_argument('-o', '--output', type=str, metavar='FILENAME',
+        help="default: save in the current working directory.")
 parser.add_argument('--plot', action='store_true',
         help="show the matrix")
 parser.add_argument('-v', '--verbose', action='count', default=0,
