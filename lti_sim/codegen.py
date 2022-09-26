@@ -5,6 +5,7 @@ Backend for generating the run-time program, compiling it, and loading it into p
 from .inputs import LinearInput, LogarithmicInput
 import ctypes
 import datetime
+import math
 import numpy as np
 import os
 import subprocess
@@ -92,11 +93,16 @@ class Codegen:
         c +=  "}\n\n"
         return c
 
-    def _kernel(self):
+    def _kernel(self, init=False):
+        assert not ((self.target == 'cuda') and init)
         c = ""
         if self.target == 'cuda':
             c += "__device__ "
-        c += f"__inline__ void {self.name}_kernel("
+        if init:
+            kernel_name = f"init_{self.name}_kernel"
+        else:
+            kernel_name = f"{self.name}_kernel"
+        c += f"__inline__ void {kernel_name}("
         for idx in range(len(self.inputs)):
             c += f"real input{idx}, "
         c += (f"real* state[{self.num_states}]) {{\n"
@@ -140,22 +146,58 @@ class Codegen:
                 factors.extend([f"input{inp_idx}"] * power)
             if factors:
                 c += f"    const real term{term_idx} = {' * '.join(factors)};\n"
-        c += ("\n"
-             f"    real scratch[{self.num_states}] = {{0.0}};\n"
-             f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
-              "        const real s = *state[col];\n"
-             f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
-              "            // Approximate this entry of the matrix.\n")
+        c += "\n"
         terms = []
         for term_idx, powers in enumerate(self.polynomial.terms):
             if any(p > 0 for p in powers):
                 terms.append(f"term{term_idx} * (*tbl_ptr++)")
             else:
                 terms.append("(*tbl_ptr++)")
-        c += (f"            const real polynomial = {' + '.join(terms)};\n"
-               "            scratch[row] += polynomial * s; // Compute the dot product. \n"
-               "        }\n"
-               "    }\n")
+        polynomial = ' + '.join(terms)
+        if not init:
+            c += (f"    real scratch[{self.num_states}] = {{0.0}};\n"
+                  f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
+                   "        const real s = *state[col];\n"
+                  f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
+                   "            // Approximate this entry of the matrix.\n"
+                  f"            const real polynomial = {polynomial};\n"
+                   "            scratch[row] += polynomial * s; // Compute the dot product. \n"
+                   "        }\n"
+                   "    }\n")
+        else:
+            steadystate_period = 24 * 60 * 60 * 1000 # Number of milliseconds in one day.
+            iterations = math.ceil(math.log2(steadystate_period / self.model.time_step))
+            c += ( "    // Approximate the matrix.\n"
+                  f"    real matrix[{self.num_states**2}];\n"
+                  f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
+                  f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
+                  f"            matrix[row * {self.num_states} + col] = {polynomial};\n"
+                   "        }\n"
+                   "    }\n"
+                   "    // Repeatedly square the matrix to increase the period of integration.\n"
+                  f"    for(int iteration = 0; iteration < {iterations}; ++iteration) {{\n"
+                  f"        real next_matrix[{self.num_states**2}];\n"
+                  f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
+                  f"            for(int col = 0; col < {self.num_states}; ++col) {{\n"
+                  f"                real dot = 0.0;\n"
+                  f"                for(int x = 0; x < {self.num_states}; ++x) {{\n"
+                  f"                    dot += matrix[row * {self.num_states} + x] * matrix[x * {self.num_states} + col];\n"
+                  f"                }}\n"
+                  f"                next_matrix[row * {self.num_states} + col] = dot;\n"
+                  f"            }}\n"
+                  f"        }}\n"
+                  f"        for(int x = 0; x < {self.num_states**2}; ++x) {{\n"
+                  f"            matrix[x] = next_matrix[x];\n"
+                  f"        }}\n"
+                  f"    }}\n"
+                   "    // Compute the dot product.\n"
+                  f"    real scratch[{self.num_states}] = {{0.0}};\n"
+                  f"    const real s = {self.conserve_sum / self.num_states};\n"
+                  f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
+                  f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
+                  f"            scratch[row] += matrix[row * {self.num_states} + col] * s;\n"
+                   "        }\n"
+                   "    }\n")
         if self.conserve_sum is not None:
             c += ("    // Conserve the sum of the states.\n"
                   "    real sum_states = 0.0;\n"
