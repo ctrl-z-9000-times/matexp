@@ -106,15 +106,10 @@ class Codegen:
             if isinstance(inp, LinearInput):
                 c += f"    input{idx} = (input{idx} - {inp.minimum}) * {inp.bucket_frq};\n"
             elif isinstance(inp, LogarithmicInput):
-                if self.target == 'host':
-                    c += f"    input{idx} = log2(input{idx} + {inp.scale});\n"
-                elif self.target == 'cuda':
-                    if self.float_dtype == np.float32:
-                        c += f"    input{idx} = log2f(input{idx} + {inp.scale});\n"
-                    elif self.float_dtype == np.float64:
-                        c += f"    input{idx} = log2(input{idx} + {inp.scale});\n"
-                    else: raise NotImplementedError(self.float_dtype)
-                else: raise NotImplementedError(self.target)
+                log2 = "log2"
+                if self.target == 'cuda' and self.float_dtype == np.float32:
+                        log2 = "log2f"
+                c += f"    input{idx} = {log2}(input{idx} + {inp.scale});\n"
                 c += f"    input{idx} = (input{idx} - {inp.log2_minimum}) * {inp.bucket_frq};\n"
             else: raise NotImplementedError(type(inp))
             c += (f"    int bucket{idx} = (int) input{idx};\n"
