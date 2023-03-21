@@ -7,11 +7,19 @@ parser = argparse.ArgumentParser(prog='lti_sim',
 parser.add_argument('nmodl_filename',
         metavar='NMODL_FILENAME',
         help="")
-params = parser.add_argument_group('model parameters')
-params.add_argument('-t', '--time_step', type=float, required=True,
+parser.add_argument('-v', '--verbose', action='count', default=0,
+        help="print diagnostic information, give twice for trace mode")
+parser.add_argument('--plot', action='store_true',
+        help="show the propagator matrix")
+parser.add_argument('-o', '--output', type=str, metavar='FILENAME',
+        help="default: save into the current working directory")
+sim = parser.add_argument_group('simulation parameters')
+sim.add_argument('-t', '--time_step', type=float, required=True,
         help="")
-params.add_argument('-c', '--celsius', type=float, default=37.0,
+sim.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")
+sim.add_argument('-e', '--error', type=float, default=1e-4,
+        help="maximum error per time step. default: 10^-4")
 inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=3, metavar=('NAME', 'MIN', 'MAX'),
@@ -19,19 +27,11 @@ inputs.add_argument('-i', '--input', action='append', default=[],
 inputs.add_argument('--log', nargs='?', action='append', default=[],
         metavar='INPUT',
         help="scale the input logarithmically")
-sim = parser.add_argument_group('simulator arguments')
-sim.add_argument('-e', '--error', type=float, default=1e-4,
-        help="maximum error per time step. default: 10^-4")
-sim.add_argument('--target', choices=['host','cuda'], default='host',
+computer = parser.add_argument_group('computer specification')
+computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
-sim.add_argument('-f', '--float', choices=['32','64'], default='64',
+computer.add_argument('-f', '--float', choices=['32','64'], default='64',
         help="default: 64")
-sim.add_argument('-o', '--output', type=str, metavar='FILENAME',
-        help="default: save in the current working directory.")
-parser.add_argument('--plot', action='store_true',
-        help="show the matrix")
-parser.add_argument('-v', '--verbose', action='count', default=0,
-        help="show diagnostic information, give twice for trace info")
 args = parser.parse_args()
 
 if   args.float == '32': float_dtype = np.float32
