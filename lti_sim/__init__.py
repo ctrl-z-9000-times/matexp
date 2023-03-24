@@ -23,7 +23,6 @@ __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 def main(nmodl_filename, inputs, time_step, temperature,
          error, float_dtype, target,
          outfile=None, verbose=False, plot=False, use_cache=True, load=False):
-    outfile = _get_output_filename(outfile, nmodl_filename, target, verbose)
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
@@ -37,25 +36,14 @@ def main(nmodl_filename, inputs, time_step, temperature,
               f"Run speed:    {round(optimized.runtime)} ns/Δt")
     if plot:
         optimized.approx.plot(model.name)
-    with open(outfile, 'wt') as f:
-        f.write(source_code)
+    if outfile:
+        outfile = os.path.abspath(outfile)
+        assert outfile != model.nmodl_filename
+        nmodl_text = optimized.backend.get_nmodl_text()
+        with open(outfile, 'wt') as f:
+            f.write(nmodl_text)
     if load:
         return optimized.backend.load()
-
-def _get_output_filename(outfile, nmodl_filename, target, verbose):
-    """ Clean the output filename and generate a default one if none was given. """
-    generate_filename = not outfile
-    if generate_filename:
-        nmodl_filename = os.path.basename(nmodl_filename)
-        nmodl_filename = os.path.splitext(nmodl_filename)[0]
-        if target == 'cuda':
-            outfile = nmodl_filename + '.cu'
-        elif target == 'host':
-            outfile = nmodl_filename + '.cpp'
-    outfile = os.path.abspath(outfile)
-    if generate_filename or verbose:
-        print(f'Output will be written to: "{outfile}"')
-    return outfile
 
 def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
     num_instances = 10 * 1000

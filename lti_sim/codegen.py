@@ -10,6 +10,7 @@ import numpy as np
 import os
 import subprocess
 import tempfile
+import re
 
 class Codegen:
     def __init__(self, table, float_dtype, target):
@@ -30,8 +31,8 @@ class Codegen:
         self.source_code = (
                 self._preamble() +
                 self._table_data() +
-                self._kernel() +
-                self._entrypoint())
+                self._make_kernel(init=True) +
+                self._make_kernel())
 
     def _preamble(self):
         c = (f"/{'*'*69}\n"
@@ -63,7 +64,8 @@ class Codegen:
         table_data = self.table.reshape(-1, self.num_states, self.num_states, self.polynomial.num_terms)
         table_data = table_data.transpose(0, 2, 1, 3) # Switch from row-major to column-major format.
         table_data = np.array(table_data, dtype=self.float_dtype)
-        data_str   = ',\n    '.join((','.join(str(x) for x in bucket.flat)) for bucket in table_data)
+        # Convert data from numbers into a string.
+        data_str = ',\n    '.join(str(x) for x in table_data.flat)
         if self.target == 'cuda':
             device = '__device__ '
         elif self.target == 'host':
@@ -93,16 +95,16 @@ class Codegen:
         c +=  "}\n\n"
         return c
 
-    def _kernel(self, init=False):
+    def _make_kernel(self, init=False):
         assert not ((self.target == 'cuda') and init)
         c = ""
         if self.target == 'cuda':
             c += "__device__ "
         if init:
-            kernel_name = f"init_{self.name}_kernel"
+            kernel_name = f"initial_{self.name}_kernel"
         else:
             kernel_name = f"{self.name}_kernel"
-        c += f"__inline__ void {kernel_name}("
+        c += f"__inline__ extern void {kernel_name}("
         for idx in range(len(self.inputs)):
             c += f"real input{idx}, "
         c += (f"real* state[{self.num_states}]) {{\n"
@@ -123,7 +125,7 @@ class Codegen:
                   f"        bucket{idx} = {inp.num_buckets - 1};\n"
                   f"        input{idx} = 1.0;\n"
                    "    }\n")
-            if not isinstance(inp, LogarithmicInput): # What could go wrong? It's not like a chemical concentration will ever go negative, right?
+            if not isinstance(inp, LogarithmicInput): # Chemical concentration will never go negative.
                 c += (f"    else if(bucket{idx} < 0) {{\n"
                       f"        bucket{idx} = 0;\n"
                       f"        input{idx} = 0.0;\n"
@@ -253,7 +255,6 @@ class Codegen:
             scope["_entrypoint"] = self._load_entrypoint_cuda()
         exec(pycode, scope)
         self._load_cache = fn = scope[fn_name]
-        fn._call_from_NEURON = self._call_from_NEURON()
         return fn
 
     def _load_entrypoint_host(self):
@@ -261,7 +262,7 @@ class Codegen:
         so_file  = tempfile.NamedTemporaryFile(prefix=self.name+'_', suffix='.so', delete=False)
         src_file.close(); so_file.close()
         with open(src_file.name, 'wt') as f:
-            f.write(self.source_code)
+            f.write(self.source_code + self._entrypoint())
             f.flush()
         subprocess.run(["g++", src_file.name, "-o", so_file.name,
                         "-shared", "-O3"],
@@ -283,14 +284,43 @@ class Codegen:
     def _load_entrypoint_cuda(self):
         import cupy
         fn_name = self.name + "_advance"
-        module = cupy.RawModule(code=self.source_code,
+        module = cupy.RawModule(code=self.source_code + self._entrypoint(),
                                 name_expressions=[fn_name],
                                 options=('--std=c++11',),)
         return module.get_function(fn_name)
 
-    def _call_from_NEURON(self):
+    def get_nmodl_text(self):
         inputs = ", ".join(self.input_names)
-        states = ", ".join(f'& {x}' for x in self.state_names)
-        return (
-            f"real* state[{self.num_states}] = {{{states}}};\n"
-            f"{self.name}_kernel({inputs}, state);")
+        states = ", ".join(f'&({x})' for x in self.state_names)
+
+        solver_impl = f"\n\nVERBATIM\n\n{self.source_code}\n\nENDVERBATIM\n\n"
+        solve_breakpoint = f"SOLVE solve_{self.name}_matexp"
+        solve_procedure = (
+            f"PROCEDURE solve_{self.name}_matexp() {{\n"
+             "  VERBATIM\n"
+            f"    real* state[{self.num_states}] = {{{states}}};\n"
+            f"    {self.name}_kernel({inputs}, state);\n"
+             "  ENDVERBATIM\n"
+             "}\n\n")
+        solve_initial = (
+             "VERBATIM\n"
+            f"    assert(dt == {self.model.time_step});\n"
+            f"    assert(celsius == {self.model.temperature});\n"
+            f"    real* state[{self.num_states}] = {{{states}}};\n"
+            f"    initial_{self.name}_kernel({inputs}, state);\n"
+            "ENDVERBATIM\n")
+
+        with open(self.model.nmodl_filename, 'rt') as f:
+            nmodl_text = f.read()
+
+        # Find the end of the NEURON block and insert the new solver right after it.
+        nmodl_text = re.sub(r"NEURON[^}]+}",
+                lambda x: x.group(0) + solver_impl + solve_procedure,
+                nmodl_text)
+        # Replace the SOLVE statements.
+        initial_regex = r"SOLVE\s+\w+\s+STEADYSTATE\s+sparse"
+        breakpoint_regex = r"SOLVE\s+\w+\s+METHOD\s+sparse"
+        nmodl_text = re.sub(initial_regex, solve_initial, nmodl_text)
+        nmodl_text = re.sub(breakpoint_regex, solve_breakpoint, nmodl_text)
+        return nmodl_text
+

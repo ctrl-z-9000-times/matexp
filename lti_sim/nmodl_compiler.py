@@ -75,50 +75,46 @@ class NMODL_Compiler:
         derivative_blocks = self.lookup(ANT.DERIVATIVE_BLOCK)
         assert len(derivative_blocks) == 1
         self.derivative_block = CodeBlock(derivative_blocks[0])
-        self.initial_block = CodeBlock(self.lookup(ANT.INITIAL_BLOCK)[0])
+        self.initial_block    = CodeBlock(self.lookup(ANT.INITIAL_BLOCK)[0])
+        self.breakpoint_block = CodeBlock(self.lookup(ANT.BREAKPOINT_BLOCK)[0])
 
     def _gather_inputs(self, inputs):
-        # 
-        input_symbols = []
+        inputs = list(inputs)
+        assert all(isinstance(inp, Input) for inp in inputs)
+        # Determine the input arguments to the model.
+        expected_inputs = set()
         if self.derivative_block.reads_symbol("v"):
-            input_symbols.append("v")
+            expected_inputs.add("v")
         for stmt in self.lookup(ANT.USEION):
             ion = stmt.name.value.eval()
             for x in stmt.readlist:
                 var_name = x.name.value.eval()
-                if   var_name == ion + 'i': input_symbols.append(var_name)
-                elif var_name == ion + 'o': input_symbols.append(var_name)
+                if   var_name == ion + 'i': expected_inputs.add(var_name)
+                elif var_name == ion + 'o': expected_inputs.add(var_name)
         for x in self.lookup(ANT.POINTER_VAR):
-            input_symbols.append(x.get_node_name())
+            expected_inputs.add(x.get_node_name())
         for x in self.lookup(ANT.BBCORE_POINTER_VAR):
-            input_symbols.append(x.get_node_name())
-        # Check argument "inputs".
-        if not inputs:
-            inputs = self._get_default_inputs(input_symbols)
-        assert all(isinstance(inp, Input) for inp in inputs)
-        # Match up the expected inputs with the given "Input" data structures.
-        inputs = {inp.name: inp for inp in inputs}
-        try:
-            self.inputs = [inputs[name] for name in sorted(input_symbols)]
-            assert len(inputs) == len(input_symbols)
-        except (KeyError, AssertionError):
-            expected_inputs = ' & '.join(input_symbols)
-            received_inputs = ' & '.join(inputs.keys())
-            raise ValueError(f'Invalid inputs, expected {expected_inputs} got {received_inputs}')
+            expected_inputs.add(x.get_node_name())
+        # Check the given input specifications.
+        given_inputs   = set(x.name for x in inputs)
+        extra_inputs   = given_inputs.difference(expected_inputs)
+        missing_inputs = expected_inputs.difference(given_inputs)
+        for x in missing_inputs:
+            # Insert default values if applicable.
+            if x == 'v':
+                inputs.append(LinearInput(x, -100, 100))
+            else:
+                raise ValueError('Missing inputs: '+', '.join(missing_inputs))
+        # Filter out extra inputs. This allows the user to more easily re-use
+        # the same input-spec for every model in their project.
+        inputs = [x for x in inputs if x.name not in extra_inputs]
+        # 
+        self.inputs = sorted(inputs, key=lambda x: x.name)
         self.num_inputs = len(self.inputs)
         self.input_names = [inp.name for inp in self.inputs]
         # Make aliases "input1", "input2", etc.
         for inp_idx, inp in enumerate(self.inputs):
             setattr(self, f"input{inp_idx+1}", inp)
-
-    def _get_default_inputs(self, input_symbols):
-        inputs = []
-        for name in sorted(input_symbols):
-            if name == "v":
-                inputs.append(LinearInput(name, -120, 120))
-            else:
-                inputs.append(LogarithmicInput(name, 0, 1000))
-        return inputs
 
     def _compile_derivative_block(self, temperature):
         scope = {'celsius': float(temperature)} # Allow NMODL file to override temperature.

@@ -216,8 +216,6 @@ class Approx1D(Approx):
         plt.figure(fig_title)
         if self.num_states < 10: # Otherwise there is not enough room on the figure.
             plt.suptitle(fig_title)
-        # TODO: If there are many plots (>100) then only show the x&y axis
-        # labels on the bottom & left side of page.
         for row_idx, row in enumerate(self.model.state_names):
             for col_idx, col in enumerate(self.model.state_names):
                 plt.subplot(self.num_states, self.num_states, row_idx*self.num_states + col_idx + 1)
@@ -230,9 +228,8 @@ class Approx1D(Approx):
                     plt.semilogx(input1_values, approx[:, row_idx, col_idx], color='r')
                 if self.num_states < 10: # Otherwise there is not enough room on the figure.
                     plt.xlabel(self.input1.name, labelpad=1.0)
-                    # TODO: Should there be a ylabel? "Percent" or "Fraction"
+                # Draw vertical lines at the bucket boundaries.
                 if self.input1.num_buckets < 100: # Otherwise the plots become unreadable.
-                    # TODO: Consider making an option to control whether the vertical lines are shown?
                     for input1_value in self.input1.sample_space(self.input1.num_buckets + 1):
                         plt.axvline(input1_value)
         x = .05
