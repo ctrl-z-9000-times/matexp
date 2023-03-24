@@ -14,7 +14,6 @@ For more information see:
 from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
-from . import cache
 import numpy as np
 import os
 import time
@@ -25,16 +24,6 @@ def main(nmodl_filename, inputs, time_step, temperature,
          error, float_dtype, target,
          outfile=None, verbose=False, plot=False, use_cache=True, load=False):
     outfile = _get_output_filename(outfile, nmodl_filename, target, verbose)
-    # Check the cache for a saved solution.
-    arguments = (inputs, time_step, temperature, error, float_dtype, target)
-    if use_cache and not plot and not load:
-        source_code = cache.read(nmodl_filename, arguments)
-        if source_code:
-            if verbose:
-                print("Using cached output.")
-            with open(outfile, 'wt') as f:
-                f.write(source_code)
-            return
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
@@ -48,8 +37,6 @@ def main(nmodl_filename, inputs, time_step, temperature,
               f"Run speed:    {round(optimized.runtime)} ns/Δt")
     if plot:
         optimized.approx.plot(model.name)
-    if use_cache:
-        cache.write(nmodl_filename, arguments, source_code)
     with open(outfile, 'wt') as f:
         f.write(source_code)
     if load:
