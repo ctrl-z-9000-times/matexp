@@ -70,7 +70,7 @@ class Codegen:
             device = '__device__ '
         elif self.target == 'host':
             device = ''
-        return f"{device}const real table[{table_data.size}] = {{\n    {data_str}}};\n\n"
+        return f"{device}const real {self.name}_table[{table_data.size}] = {{\n    {data_str}}};\n\n"
 
     def _entrypoint(self):
         c = 'extern "C" '
@@ -108,7 +108,7 @@ class Codegen:
         for idx in range(len(self.inputs)):
             c += f"real input{idx}, "
         c += (f"real* state[{self.num_states}]) {{\n"
-               "    const real* __restrict__ tbl_ptr = table;\n"
+              f"    const real* __restrict__ tbl_ptr = {self.name}_table;\n"
                "    // Locate the input within the look-up table.\n")
         for idx, inp in enumerate(self.inputs):
             if isinstance(inp, LinearInput):
