@@ -1,6 +1,6 @@
-from lti_sim import LinearInput, LogarithmicInput
-from lti_sim.lti_model import LTI_Model
-from lti_sim.nmodl_compiler import NMODL_Compiler
+from matexp import LinearInput, LogarithmicInput
+from matexp.lti_model import LTI_Model
+from matexp.nmodl_compiler import NMODL_Compiler
 import os
 import pytest
 

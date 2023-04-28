@@ -15,7 +15,7 @@ class Input:
         assert self.minimum < self.maximum
 
     def __repr__(self):
-        return f"lti_sim.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum})"
+        return f"matexp.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum})"
 
     def __eq__(self, other):
         return repr(self) == repr(other)

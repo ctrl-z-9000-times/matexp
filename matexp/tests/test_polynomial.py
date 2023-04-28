@@ -1,5 +1,5 @@
-from lti_sim.inputs import *
-from lti_sim.polynomial import *
+from matexp.inputs import *
+from matexp.polynomial import *
 import pytest
 
 def test_cubic_polynomial():

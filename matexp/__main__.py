@@ -1,8 +1,8 @@
-from lti_sim import main, LinearInput, LogarithmicInput
+from matexp import main, LinearInput, LogarithmicInput
 import argparse
 import numpy as np
 
-parser = argparse.ArgumentParser(prog='lti_sim',
+parser = argparse.ArgumentParser(prog='matexp',
         description="Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.",)
 parser.add_argument('nmodl_filename',
         metavar='INPUT_PATH',

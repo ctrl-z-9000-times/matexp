@@ -1,7 +1,7 @@
 """
 Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.
 
-Usage: python -m lti_sim
+Usage: python -m matexp
 
 For more information see:
     Exact digital simulation of time-invariant linear systems with applications

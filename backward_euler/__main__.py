@@ -1,6 +1,6 @@
 import argparse
 import ctypes
-import lti_sim
+import matexp
 import matplotlib.pyplot as plt
 import numpy as np
 import os.path
@@ -8,20 +8,20 @@ import random
 import subprocess
 import tempfile
 
-voltage_input = lti_sim.LinearInput('v', -100, 100)
-glu_input     = lti_sim.LogarithmicInput('C', 0, 1e3)
+voltage_input = matexp.LinearInput('v', -100, 100)
+glu_input     = matexp.LogarithmicInput('C', 0, 1e3)
 voltage_input.set_num_buckets(1)
 glu_input.set_num_buckets(1, scale=0.01)
 
-py_dir    = os.path.dirname(lti_sim.__file__)
+py_dir    = os.path.dirname(matexp.__file__)
 nav11_mod = os.path.join(py_dir, "tests", "Nav11.mod")
 ampa_mod  = os.path.join(py_dir, "tests", "ampa13.mod")
 nmda_mod  = os.path.join(py_dir, "tests", "NMDA.mod")
 
 lti_kwargs = {'temperature': 37.0, 'float_dtype': np.float64, 'target': 'host', 'load': True}
-nav11_lti_sim = lambda ts, err: lti_sim.main(nav11_mod, [voltage_input], ts, error=err, **lti_kwargs)
-ampa_lti_sim = lambda ts, err: lti_sim.main(ampa_mod, [glu_input], ts, error=err, **lti_kwargs)
-nmda_lti_sim = lambda ts, err: lti_sim.main(nmda_mod, [glu_input, voltage_input], ts, error=err, **lti_kwargs)
+nav11_matexp = lambda ts, err: matexp.main(nav11_mod, [voltage_input], ts, error=err, **lti_kwargs)
+ampa_matexp = lambda ts, err: matexp.main(ampa_mod, [glu_input], ts, error=err, **lti_kwargs)
+nmda_matexp = lambda ts, err: matexp.main(nmda_mod, [glu_input, voltage_input], ts, error=err, **lti_kwargs)
 
 def load_cpp(filename, num_inputs, num_states, TIME_STEP, opt_level=1):
     """ Compile one of the Backward Euler C++ files and link it into python. """
@@ -106,38 +106,38 @@ def plot_accuracy_vs_timestep():
     ampa = True
     nmda = True
     if nav:
-        nav11_exact = nav11_lti_sim(time_steps_ms[0], exact_accuracy)
+        nav11_exact = nav11_matexp(time_steps_ms[0], exact_accuracy)
         # Nav11 Backward Euler
         nav11_be_fn = [load_cpp("Nav11.cpp", 1, 6, ts, 1) for ts in time_steps_ms[1:]]
         nav11_be_fn.insert(0, nav11_exact)
         nav11_be_err = measure_accuracy([voltage_input], 6, nav11_be_fn, time_steps_ns)
         print("Nav11 Backward Euler:", nav11_be_err)
         # Nav11 Matrix Exponential
-        nav11_me_fn = [nav11_lti_sim(ts, target_accuracy) for ts in time_steps_ms[1:]]
+        nav11_me_fn = [nav11_matexp(ts, target_accuracy) for ts in time_steps_ms[1:]]
         nav11_me_fn.insert(0, nav11_exact)
         nav11_me_err = measure_accuracy([voltage_input], 6, nav11_me_fn, time_steps_ns)
         print("Nav11 Matrix Exponential:", nav11_me_err)
     if ampa:
-        ampa_exact = ampa_lti_sim(time_steps_ms[0], exact_accuracy)
+        ampa_exact = ampa_matexp(time_steps_ms[0], exact_accuracy)
         # AMPA Receptor Backward Euler
         ampa_be_fn = [load_cpp("ampa13.cpp", 1, 13, ts, 1) for ts in time_steps_ms[1:]]
         ampa_be_fn.insert(0, ampa_exact)
         ampa_be_err = measure_accuracy([glu_input], 13, ampa_be_fn, time_steps_ns)
         print("AMPA Backward Euler:", ampa_be_err)
         # AMPA Receptor Matrix Exponential
-        ampa_me_fn = [ampa_lti_sim(ts, target_accuracy) for ts in time_steps_ms[1:]]
+        ampa_me_fn = [ampa_matexp(ts, target_accuracy) for ts in time_steps_ms[1:]]
         ampa_me_fn.insert(0, ampa_exact)
         ampa_me_err = measure_accuracy([glu_input], 13, ampa_me_fn, time_steps_ns)
         print("AMPA Matrix Exponential:", ampa_me_err)
     if nmda:
-        nmda_exact = nmda_lti_sim(time_steps_ms[0], 1e-6) # NOTE: 2D models struggle to achieve exact accuracy.
+        nmda_exact = nmda_matexp(time_steps_ms[0], 1e-6) # NOTE: 2D models struggle to achieve exact accuracy.
         # NMDA Receptor Backward Euler
         nmda_be_fn = [load_cpp("NMDA.cpp", 2, 10, ts, 1) for ts in time_steps_ms[1:]]
         nmda_be_fn.insert(0, nmda_exact)
         nmda_be_err = measure_accuracy([glu_input, voltage_input], 10, nmda_be_fn, time_steps_ns)
         print("NMDA Backward Euler:", nmda_be_err)
         # NMDA Receptor Matrix Exponential
-        nmda_me_fn = [nmda_lti_sim(ts, target_accuracy) for ts in time_steps_ms[1:]]
+        nmda_me_fn = [nmda_matexp(ts, target_accuracy) for ts in time_steps_ms[1:]]
         nmda_me_fn.insert(0, nmda_exact)
         nmda_me_err = measure_accuracy([glu_input, voltage_input], 10, nmda_me_fn, time_steps_ns)
         print("NMDA Matrix Exponential:", nmda_me_err)
@@ -156,7 +156,7 @@ def plot_accuracy_vs_timestep():
     plt.show()
 
 def measure_speed(fn, num_states, inputs):
-    return lti_sim._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
+    return matexp._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
                                   float_dtype = np.float64, target = 'host')
 
 def plot_speed():
@@ -167,7 +167,7 @@ def plot_speed():
     nav11_be = measure_speed(fn, 6, [voltage_input])
     print('BE', nav11_be)
     # Nav11 Matrix Exponential
-    fn = nav11_lti_sim(0.1, err)
+    fn = nav11_matexp(0.1, err)
     nav11_me = measure_speed(fn, 6, [voltage_input])
     print('ME', nav11_me)
     # AMPA Receptor Backward Euler
@@ -176,7 +176,7 @@ def plot_speed():
     ampa_be = measure_speed(fn, 13, [glu_input])
     print('BE', ampa_be)
     # AMPA Receptor Matrix Exponential
-    fn = ampa_lti_sim(0.1, err)
+    fn = ampa_matexp(0.1, err)
     ampa_me = measure_speed(fn, 13, [glu_input])
     print('ME', ampa_me)
     # NMDA Receptor Backward Euler
@@ -185,7 +185,7 @@ def plot_speed():
     nmda_be = measure_speed(fn, 10, [glu_input, voltage_input])
     print('BE', nmda_be)
     # NMDA Receptor Matrix Exponential
-    fn = nmda_lti_sim(0.1, err)
+    fn = nmda_matexp(0.1, err)
     nmda_me = measure_speed(fn, 10, [glu_input, voltage_input])
     print('ME', nmda_me)
     print()
@@ -212,18 +212,18 @@ def plot_speed_vs_accuracy():
     print("Target accuracies", max_err)
     nav11_speed = []
     for x in max_err:
-        fn = nav11_lti_sim(0.1, x)
+        fn = nav11_matexp(0.1, x)
         nav11_speed.append(measure_speed(fn, 6, [voltage_input]))
     print("Nav11 speeds", nav11_speed)
     ampa_speed = []
     for x in max_err:
-        fn = ampa_lti_sim(0.1, x)
+        fn = ampa_matexp(0.1, x)
         ampa_speed.append(measure_speed(fn, 13, [glu_input]))
     print("AMPA speeds", ampa_speed)
     nmda_max_err = [1e-2, 1e-3, 1e-4]
     nmda_speed = []
     for x in nmda_max_err:
-        fn = nmda_lti_sim(0.1, x)
+        fn = nmda_matexp(0.1, x)
         nmda_speed.append(measure_speed(fn, 10, [glu_input, voltage_input]))
     print("NMDA speeds", nmda_speed)
     print()

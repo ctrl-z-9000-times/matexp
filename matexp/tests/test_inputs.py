@@ -1,4 +1,4 @@
-from lti_sim.inputs import *
+from matexp.inputs import *
 import pytest
 import random
 
