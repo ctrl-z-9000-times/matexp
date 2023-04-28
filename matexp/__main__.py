@@ -56,3 +56,6 @@ inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 main(args.nmodl_filename, inputs, args.time_step, args.celsius,
      error=args.error, target=args.target, float_dtype=float_dtype,
      outfile=args.output, verbose=args.verbose, plot=args.plot,)
+
+_placeholder = lambda: None # Symbol for the CLI script to import and call.
+

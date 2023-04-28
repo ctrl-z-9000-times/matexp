@@ -29,3 +29,4 @@ classifiers = [
 ]
 requires-python = ">=3.8"
 dependencies = ["nmodl", "numpy", "scipy", "matplotlib"]
+scripts = {matexp = "matexp:__main__._placeholder"}
