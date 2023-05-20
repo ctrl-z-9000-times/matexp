@@ -38,6 +38,8 @@ def main(nmodl_filename, inputs, time_step, temperature,
         optimized.approx.plot(model.name)
     if outfile:
         outfile = os.path.abspath(outfile)
+        if os.path.isdir(outfile):
+            outfile = os.path.join(outfile, os.path.basename(model.nmodl_filename))
         assert outfile != model.nmodl_filename
         nmodl_text = optimized.backend.get_nmodl_text()
         with open(outfile, 'wt') as f:
