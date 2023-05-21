@@ -26,7 +26,7 @@ inputs.add_argument('-i', '--input', action='append', default=[],
         help="")
 inputs.add_argument('--log', nargs='?', action='append', default=[],
         metavar='INPUT',
-        help="scale the input logarithmically")
+        help="scale input logarithmically, for chemical concentrations")
 computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")

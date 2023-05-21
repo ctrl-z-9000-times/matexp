@@ -1,56 +1,65 @@
-# LTI_SIM
+# matexp
 
-Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.
+This program solves systems of differential equations for the NEURON simulator
+using the matrix-exponential method of integration. This is a new method of
+integration. The solution is faster and more accurate than NEURONs built in
+solver. This method is only applicable to systems which are linear and
+time-invariant, such as Markov kinetic models. This method is also limited to
+systems with one or two inputs.
 
-For more information see:
- *  Exact digital simulation of time-invariant linear systems with applications
-    to neuronal modeling. Rotter S, Diesmann M (1999). 
-    https://doi.org/10.1007/s004220050570
- *  [Presentation for the NEURON developers meeting](./presentation.pdf)
+This program uses the
+[NMODL file format](https://www.neuron.yale.edu/neuron/static/py_doc/modelspec/programmatic/mechanisms/nmodl.html)
+(".mod" files) for both its inputs and outputs.  
+The input kinetic model is a .mod file, and the solved equations are written to new .mod file.  
+
+For more information about how this program works see [DETAILS.md](./DETAILS.md).
+
+
+### Installation
+
+Prerequisites:
+* Compiler for the target system.
+    + Host requires `g++`
+    + Cuda requires the `cupy` python package.
+
+```
+$ pip install matexp
+```
+
 
 ### Usage
 
 ```
-$ python lti_sim --help
+$ matexp --help
+usage: matexp [-h] [-v] [--plot] -t TIME_STEP [-c CELSIUS] [-e ERROR]
+              [-i NAME MIN MAX] [--log [INPUT]] [--target {host,cuda}]
+              [-f {32,64}]
+              INPUT_PATH OUTPUT_PATH
+
+positional arguments:
+  INPUT_PATH            input filename for the unsolved NMODL file
+  OUTPUT_PATH           output filename for the solution
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         print diagnostic information, give twice for trace mode
+  --plot                show the propagator matrix
+
+simulation parameters:
+  -t TIME_STEP, --time_step TIME_STEP
+  -c CELSIUS, --celsius CELSIUS
+                        default: 37°
+  -e ERROR, --error ERROR
+                        maximum error per time step. default: 10^-4
+
+input specification:
+  -i NAME MIN MAX, --input NAME MIN MAX
+  --log [INPUT]         scale input logarithmically, for chemical concentrations
+
+computer specification:
+  --target {host,cuda}  default: host
+  -f {32,64}, --float {32,64}
+                        default: 64
+
 ```
 
-Chemical concentration inputs should be preprocessed using the logarithmic option.
-
-### Methods
-
-Linear Time-Invariant systems have exact solutions, using the matrix-exponential
-function. The result is a "propagator" matrix which advances the state of the
-system by a fixed time step. To advance the state simply multiply the
-propagator matrix and the current state vector.
-
-However computing the matrix exponential is time-consuming and it is actually a
-function of the inputs to the system, so using this method naively at run time
-is prohibitively slow.
-
----
-
-This program computes the propagator matrix for every possible combination of
-inputs. It then reduces all of those exact solutions into an approximation
-which is optimized for both speed and accuracy.
-
-The approximation is structured as follows:
-1. The input space is divided into evenly spaced bins.
-2. Each bin contains a polynomial approximation of the function.  
-   All polynomial have the same degree, just with different coefficients.
-
-The optimization proceeds as follows:
-
-1. Start with an initial configuration, which consists of a polynomial degree and a
-number of input bins.  
-For example models with one input start with a cubic polynomial and 10 input bins.
-
-2. Determine the number of input bins which yields the target accuracy.  
-   The accuracy is directly proportional to the number of input bins.
-
-3. Measure the speed performance of the configuration by running a small but
-realistic benchmark.
-
-4. Experiment with different polynomials to find the fastest configuration which
-meets the target accuracy.  
-Use a simple hill-climbing procedure to find the first local maxima of
-performance.
