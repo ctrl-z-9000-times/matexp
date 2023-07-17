@@ -2,15 +2,15 @@
 
 This program solves systems of differential equations for the NEURON simulator
 using the matrix-exponential method of integration. This is a new method of
-integration. The solution is faster and more accurate than NEURONs built in
-solver. This method is only applicable to systems which are linear and
-time-invariant, such as Markov kinetic models. This method is also limited to
-systems with one or two inputs.
+integration. The solution is faster and more accurate than NEURONs built
+in "sparse" solver. This method is only applicable to systems which are linear
+and time-invariant, such as Markov kinetic models. This method is also limited
+to systems with one or two inputs.
 
 This program uses the
 [NMODL file format](https://www.neuron.yale.edu/neuron/static/py_doc/modelspec/programmatic/mechanisms/nmodl.html)
-(".mod" files) for both its inputs and outputs.  
-The input kinetic model is a .mod file, and the solved equations are written to new .mod file.  
+(".mod" files). 
+The input kinetic model is an NMODL file, and the solution is written to a new NMODL file.
 
 For more information about how this program works see [DETAILS.md](./DETAILS.md).
 
@@ -19,7 +19,7 @@ For more information about how this program works see [DETAILS.md](./DETAILS.md)
 
 Prerequisites:
 * Compiler for the target system.
-    + Host requires `g++`
+    + CPU requires `g++`
     + Cuda requires the `cupy` python package.
 
 ```

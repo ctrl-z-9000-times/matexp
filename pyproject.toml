@@ -7,9 +7,8 @@ packages = ["matexp"]
 
 [project]
 name = "matexp"
-version = "0.0.1"
+version = "1.0.0"
 description = "Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format."
-
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
