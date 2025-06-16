@@ -21,17 +21,25 @@ class LTI_Model(NMODL_Compiler):
                 assert abs(s1 - s2 / 2.0) < 1e-12, "Non-linear system detected!"
 
     def make_matrix(self, inputs, time_step=None):
-        inputs = [float(input_value) for input_value in inputs]
-        assert len(inputs) == len(self.inputs)
-        for input_value, input_data in zip(inputs, self.inputs):
-            assert input_data.minimum <= input_value <= input_data.maximum
+        # Cleanup the arguments.
+        inputs = np.array(inputs, dtype=float)
+        assert (inputs.ndim == 2) and (inputs.shape[0] == self.num_inputs)
+        for dim, input_data in enumerate(self.inputs):
+            assert np.all(input_data.minimum <= inputs[dim, :])
+            assert np.all(input_data.maximum >= inputs[dim, :])
+        # 
         if time_step is None:
             time_step = self.time_step
-        A = np.empty([self.num_states, self.num_states])
-        for col in range(self.num_states):
-            state = [float(x == col) for x in range(self.num_states)]
-            A[:, col] = self.derivative(*inputs, *state)
+        # 
+        num_samples = inputs.shape[-1]
+        A = np.empty([num_samples, self.num_states, self.num_states])
+        for sample in range(num_samples):
+            for col in range(self.num_states):
+                state = [float(x == col) for x in range(self.num_states)]
+                A[sample, :, col] = self.derivative(*inputs[:, sample], *state)
         matrix = scipy.linalg.expm(A * time_step)
-        for col in range(self.num_states):
-            matrix[:, col] *= 1.0 / sum(matrix[:, col].flat)
+        # Conserve the sum of the state.
+        # TODO: This is an optional step!!!
+        row_norm = 1.0 / matrix.sum(axis=1)
+        matrix *= np.tile(np.expand_dims(row_norm, 1), (1, self.num_states, 1))
         return matrix

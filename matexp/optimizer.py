@@ -30,27 +30,17 @@ class Parameters:
         # Measure the accuracy of these parameters.
         self.rmse       = self.approx.rmse
         self.error      = self.approx.measure_error()
-        self.max_rmse   = np.max(self.rmse)
-        self.max_error  = np.max(self.error)
+        self.error_dist = self.approx.error_dist
         if self.verbose:
-            if self.max_error > self.optimizer.accuracy:
-                status = 'FAIL'
-            else:
-                status = 'PASS'
-            print(f'Result: Max |Error| {self.max_error}  \t{status}\n')
+            status = 'PASS' if self.error <= self.optimizer.max_error else 'FAIL'
+            print(f'Error: {self.error}  \t{status}\n')
 
     def __str__(self):
         s = str(self.approx)
-        try:
-            s += f"Run speed:     {round(self.runtime, 2)}  ns/Δt\n"
-        except AttributeError: pass
         s += f"# Samples:    {self.num_samples}\n"
-        s += f"RMS Error:    {self.max_rmse}\n"
-        if self.max_error > self.optimizer.accuracy:
-            status = '- failed!'
-        else:
-            status = ''
-        s += f"Max |Error|:  {self.max_error}  {status}\n"
+        s += f"Error:        {self.error}\n"
+        if hasattr(self, "runtime"):
+            s += f"Run speed:    {round(self.runtime, 2)}  ns/Δt\n"
         return s
 
     def set_num_buckets(self):
@@ -79,16 +69,16 @@ class Parameters:
         if self.verbose: print(f"Result: {round(self.runtime, 3)} ns/Δt\n")
 
 class Optimizer:
-    def __init__(self, model, accuracy, float_dtype, target, verbose=False):
+    def __init__(self, model, max_error, float_dtype, target, verbose=False):
         self.model          = model
-        self.accuracy       = float(accuracy)
-        model.target_error  = self.accuracy
+        self.max_error      = float(max_error)
+        model.target_error  = self.max_error
         self.float_dtype    = float_dtype
         self.target         = target
         self.verbose        = bool(verbose)
         self.samples        = MatrixSamples(self.model, self.verbose)
         self.best           = None # This attribute will store the optimized parameters.
-        assert 0.0 < self.accuracy < 1.0
+        assert 0.0 < self.max_error < 1.0
         if self.verbose: print()
 
     def _optimize_log_scale(self, num_buckets: [int], polynomial):
@@ -136,7 +126,11 @@ class Optimizer:
             if polynomial in experiments:
                 continue
             experiments.add(polynomial)
-            new = self._optimize_num_buckets(self.best.num_buckets, polynomial, self.best.runtime)
+            try:
+                new = self._optimize_num_buckets(self.best.num_buckets, polynomial, self.best.runtime)
+            except RuntimeError as error_message:
+                if self.verbose: print(f'Aborting polynomial ({polynomial}) {error_message}')
+                continue
             new.benchmark()
             if new.runtime < self.best.runtime:
                 self.best = new
@@ -158,8 +152,8 @@ class Optimizer:
         self.best.set_num_buckets()
 
 class Optimize1D(Optimizer):
-    def __init__(self, model, accuracy, float_dtype, target, verbose=False):
-        super().__init__(model, accuracy, float_dtype, target, verbose)
+    def __init__(self, model, max_error, float_dtype, target, verbose=False):
+        super().__init__(model, max_error, float_dtype, target, verbose)
         self.input1 = self.model.input1
         # Initial parameters, starting point for iterative search.
         num_buckets = [10]
@@ -169,7 +163,7 @@ class Optimize1D(Optimizer):
         self._optimize_polynomial(num_buckets, polynomial)
         # Re-make the final product using all available samples.
         if self.best.num_samples < len(self.samples):
-            if self.verbose: print('Remaking best approximation with more samples ...\n')
+            if self.verbose: print('Remaking best approximation with all samples ...\n')
             self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
             self.best.benchmark()
 
@@ -178,7 +172,7 @@ class Optimize1D(Optimizer):
         cursor = Parameters(self, num_buckets, polynomial, self.verbose)
         min_buckets = 1
         # Quickly increase the num_buckets until it exceeds the target accuracy.
-        while cursor.max_error > self.accuracy:
+        while cursor.error > self.max_error:
             # Terminate early if it's slower than max_runtime.
             if max_runtime is not None and cursor.num_buckets1 > 1000:
                 cursor.benchmark()
@@ -187,12 +181,12 @@ class Optimize1D(Optimizer):
                     return cursor # It's ok to return invalid results BC they won't be used.
             min_buckets = cursor.num_buckets1
             # Heuristics to guess new num_buckets.
-            orders_of_magnitude = math.log(cursor.max_error / self.accuracy, 10)
+            orders_of_magnitude = math.log(cursor.error / self.max_error, 10)
             pct_incr = max(1.5, 1.7 ** orders_of_magnitude)
             num_buckets = num_buckets * pct_incr
             new = Parameters(self, num_buckets, polynomial, self.verbose)
             # Check that the error is decreasing monotonically.
-            if new.max_error < cursor.max_error:
+            if new.error < cursor.error:
                 cursor = new
             else:
                 raise RuntimeError("Failed to reach target accuracy.")
@@ -202,22 +196,22 @@ class Optimize1D(Optimizer):
             if num_buckets <= min_buckets:
                 break
             new = Parameters(self, num_buckets, polynomial, self.verbose)
-            if new.max_error > self.accuracy:
+            if new.error > self.max_error:
                 break
             else:
                 cursor = new
         return cursor
 
 class Optimize2D(Optimizer):
-    def __init__(self, model, accuracy, float_dtype, target, verbose=False):
-        super().__init__(model, accuracy, float_dtype, target, verbose)
+    def __init__(self, model, max_error, float_dtype, target, verbose=False):
+        super().__init__(model, max_error, float_dtype, target, verbose)
         self._optimize_log_scale([10, 10],
                 [[0, 0], [1, 0], [0, 1], [2, 0], [0, 2], [3, 0], [0, 3],])
         self._optimize_polynomial([20, 20],
                 [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]])
         # Re-make the final product using all available samples.
         if self.best.num_samples < len(self.samples):
-            if self.verbose: print('Remaking best approximation with more samples ...\n')
+            if self.verbose: print('Remaking best approximation with all samples ...\n')
             self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
             self.best.benchmark()
 
@@ -225,7 +219,7 @@ class Optimize2D(Optimizer):
         cursor = Parameters(self, num_buckets, polynomial, self.verbose)
         # Quickly increase the num_buckets until it exceeds the target accuracy.
         increase = lambda x: x * 1.50
-        while cursor.max_error > self.accuracy:
+        while cursor.error > self.max_error:
             # Terminate early if it's already slower than max_runtime.
             if max_runtime is not None and np.product(cursor.num_buckets) > 1000:
                 cursor.benchmark()
@@ -239,7 +233,7 @@ class Optimize2D(Optimizer):
             B = Parameters(self, [cursor.num_buckets1, increase(cursor.num_buckets2)], polynomial, self.verbose)
             # Take whichever experiment yielded better results. If they both
             # performed about the same then take both modifications.
-            pct_diff = 2 * (A.max_error - B.max_error) / (A.max_error + B.max_error)
+            pct_diff = 2 * (A.error - B.error) / (A.error + B.error)
             thresh   = .25
             if pct_diff < -thresh:
                 new = A
@@ -252,7 +246,7 @@ class Optimize2D(Optimizer):
                 new = Parameters(self, [increase(cursor.num_buckets1), increase(cursor.num_buckets2)],
                                 polynomial, self.verbose)
             # Check that the error is decreasing monotonically.
-            if new.max_error < cursor.max_error:
+            if new.error < cursor.error:
                 cursor = new
             else:
                 raise RuntimeError("Failed to reach target accuracy.")
@@ -264,8 +258,8 @@ class Optimize2D(Optimizer):
             A = Parameters(self, [decrease(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
             if self.verbose: print(f'Decreasing {self.model.input2.name} bins.')
             B = Parameters(self, [cursor.num_buckets1, decrease(cursor.num_buckets2)], polynomial, self.verbose)
-            new = min(A, B, key=lambda p: p.max_error)
-            if new.max_error > self.accuracy:
+            new = min(A, B, key=lambda p: p.error)
+            if new.error > self.max_error:
                 break
             else:
                 cursor = new

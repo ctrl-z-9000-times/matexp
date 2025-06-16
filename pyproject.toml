@@ -1,31 +1,31 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+    requires = ["setuptools"]
+    build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["matexp"]
+    packages = ["matexp"]
 
 [project]
-name = "matexp"
-version = "1.0.0"
-description = "Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format."
-readme = "README.md"
-license = {text = "MIT"}
-authors = [
-    {name = "David McDougall", email = "dam1784@rit.edu"},
-]
-urls = {Homepage = "https://github.com/ctrl-z-9000-times/matexp"}
-keywords = ["nmodl", "neuron"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Environment :: Console",
-    "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering",
-    "Development Status :: 5 - Production/Stable",
-    "Natural Language :: English",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
-requires-python = ">=3.8"
-dependencies = ["nmodl", "numpy", "scipy", "matplotlib"]
-scripts = {matexp = "matexp:__main__._placeholder"}
+    name = "matexp"
+    version = "1.0.0"
+    description = "Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format."
+    readme = "README.md"
+    license = {text = "MIT"}
+    authors = [
+        {name = "David McDougall", email = "dam1784@rit.edu"},
+    ]
+    urls = {Homepage = "https://github.com/ctrl-z-9000-times/matexp"}
+    keywords = ["nmodl", "neuron"]
+    classifiers = [
+        "Programming Language :: Python :: 3",
+        "Environment :: Console",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
+        "Development Status :: 5 - Production/Stable",
+        "Natural Language :: English",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ]
+    requires-python = ">=3.8"
+    dependencies = ["nmodl", "numpy", "scipy", "matplotlib"]
+    scripts = {matexp = "matexp:__main__._placeholder"}

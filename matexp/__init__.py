@@ -9,7 +9,7 @@ For more information see:
     https://doi.org/10.1007/s004220050570
 """
 
-# Written by David McDougall, 2022
+# Written by David McDougall, 2022-2025
 
 from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
@@ -22,20 +22,18 @@ __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, float_dtype, target,
-         outfile=None, verbose=False, plot=False, use_cache=True, load=False):
+         outfile=None, verbose=False):
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
     elif model.num_inputs == 2: OptimizerClass = Optimize2D
     else: raise NotImplementedError('too many inputs.')
-    optimized = OptimizerClass(model, error, float_dtype, target, (verbose >= 2)).best
-    source_code = optimized.backend.source_code
-    # 
-    if verbose or plot:
-        print(str(optimized.approx) +
-              f"Run speed:    {round(optimized.runtime)} ns/Δt")
-    if plot:
-        optimized.approx.plot(model.name)
+    optimizer = OptimizerClass(model, error, float_dtype, target, (verbose >= 2))
+    optimized = optimizer.best
+
+    if verbose:
+        print(optimized)
+
     if outfile:
         outfile = os.path.abspath(outfile)
         if os.path.isdir(outfile):
@@ -44,8 +42,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
         nmodl_text = optimized.backend.get_nmodl_text()
         with open(outfile, 'wt') as f:
             f.write(nmodl_text)
-    if load:
-        return optimized.backend.load()
+    return optimized
 
 def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
     num_instances = 10 * 1000

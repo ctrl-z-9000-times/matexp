@@ -249,7 +249,7 @@ class Codegen:
             pycode += f"    _entrypoint(n_inst, {', '.join(arrays)})\n"
             scope["_entrypoint"] = self._load_entrypoint_host()
         elif self.target == 'cuda':
-            pycode += ("    threads = 32\n"
+            pycode += ("    threads = 128\n"
                        "    blocks = (n_inst + (threads - 1)) // threads\n"
                       f"    _entrypoint((blocks,), (threads,), (n_inst, {', '.join(arrays)}))\n")
             scope["_entrypoint"] = self._load_entrypoint_cuda()

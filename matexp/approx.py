@@ -1,7 +1,9 @@
 from .inputs import LinearInput, LogarithmicInput
 from .polynomial import PolynomialForm
+from .convolve import autoconvolve
 import math
 import numpy as np
+import scipy.stats
 
 class MatrixSamples:
     def __init__(self, model, verbose=False):
@@ -48,17 +50,14 @@ class MatrixSamples:
         for bucket_idx, num, end in zip(zip(*bucket_indices), num_samples, cum_samples):
             for values, idx in zip(sample_buckets, bucket_idx):
                 values[end-num:end] += idx
-        sample_inputs = [inp.get_input_value(values) for inp, values in zip(self.model.inputs, sample_buckets)]
+        inputs = [inp.get_input_value(values) for inp, values in zip(self.model.inputs, sample_buckets)]
         # Sample the matrix.
         if self.verbose: print(f'Collecting {total_new} matrix samples ... ', end='', flush=True)
-        sample_matrices = [self.samples]
-        for input_value in zip(*sample_inputs):
-            matrix = self.model.make_matrix(input_value)
-            sample_matrices.append(np.expand_dims(matrix, 0))
+        matrices = self.model.make_matrix(inputs)
         # Append the new samples to the existing data arrays.
         for dim in range(self.model.num_inputs):
-            self.inputs[dim] = np.concatenate((self.inputs[dim], sample_inputs[dim]))
-        self.samples = np.concatenate(sample_matrices)
+            self.inputs[dim] = np.concatenate((self.inputs[dim], inputs[dim]))
+        self.samples = np.concatenate([self.samples, matrices])
         if self.verbose: print('done')
 
     def sort(self):
@@ -108,8 +107,7 @@ class Approx:
         for inp, num_buckets in zip(self.model.inputs, self.num_buckets):
             inp.set_num_buckets(num_buckets)
 
-    def _ensure_enough_exact_samples(self):
-        safety_factor = 10
+    def _ensure_enough_exact_samples(self, safety_factor=10):
         samples_per_bucket = safety_factor * self.polynomial.num_terms
         # Divide the input space into many more buckets to ensure that the
         # samples are uniformly spaced within each bucket.
@@ -120,6 +118,26 @@ class Approx:
         self.samples.sample(1)
         # Restore the original bucket dimensions.
         self.set_num_buckets()
+
+    def measure_error(self):
+        error_data      = self.sample_error()
+        self.error_dist = self.error_distribution(error_data)
+        return self.error_dist.ppf(.99)
+
+    def error_distribution(self, error_data):
+        error_data      = np.abs(error_data)
+        # Measure the distribution of approximation errors.
+        error_range     = (0.0, np.max(error_data))
+        error_bins      = np.linspace(*error_range, 2**12+1)
+        error_hist, error_bins = np.histogram(error_data, bins=error_bins)
+        error_hist      = error_hist / len(error_data)
+        bin_width       = error_bins[1] - error_bins[0]
+        # Estimate the accumulation of errors.
+        instances       = round(self.num_states * 1000 / self.model.time_step)
+        error_hist, error_range = autoconvolve(error_hist, error_range, instances)
+        error_bins      = np.linspace(*error_range, len(error_hist)+1)
+        #
+        return scipy.stats.rv_histogram((error_hist, error_bins), density=False)
 
     def __str__(self):
         s = ''
@@ -156,17 +174,21 @@ class Approx1D(Approx):
         self._ensure_enough_exact_samples()
         self._make_table()
 
+    def _polynomial_basis(self, input1_locations, num_terms):
+        # Make an approximation for each entry in the matrix.
+        A = np.empty([len(input1_locations), num_terms])
+        A[:, 0] = 1.0
+        for power in range(1, num_terms):
+            A[:, power] = input1_locations ** power
+        return A
+
     def _make_table(self):
         self.table = np.empty([self.input1.num_buckets, self.num_states, self.num_states, self.num_terms])
         self.rmse  = np.empty(self.input1.num_buckets)
         for (bucket_index,), (input_values,), exact_data in self.samples:
             # Scale the inputs into the range [0,1].
             input1_locations = self.input1.get_bucket_value(input_values) - bucket_index
-            # Make an approximation for each entry in the matrix.
-            A = np.empty([len(input1_locations), self.num_terms])
-            A[:, 0] = 1.0
-            for power in range(1, self.num_terms):
-                A[:, power] = input1_locations ** power
+            A = self._polynomial_basis(input1_locations, self.num_terms)
             B = exact_data.reshape(-1, self.num_states**2)
             coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
             coef = coef.reshape(self.num_terms, self.num_states, self.num_states).transpose(1,2,0)
@@ -180,61 +202,22 @@ class Approx1D(Approx):
         coef  = self.table[bucket_index].reshape(-1, self.num_terms)
         return coef.dot(basis).reshape(self.num_states, self.num_states)
 
-    def measure_error(self, samples=None, rmse=False):
+    def sample_error(self):
         self.set_num_buckets()
-        if samples is None: samples = self.samples
-        error = np.empty(self.input1.num_buckets)
-        for (bucket_index,), (input_values,), exact_data in samples:
+        error = []
+        for (bucket_index,), (input_values,), exact_data in self.samples:
             # Get the locations of the inputs within this bucket.
             locations = self.input1.get_bucket_value(input_values) - bucket_index
-            # 
-            basis = np.array([locations ** power for power in range(self.num_terms)])
             # Compute the approximate matrices for all samples.
+            basis = self._polynomial_basis(locations, self.num_terms).T
             coef = self.table[bucket_index].reshape(-1, self.num_terms)
             approx_matrix = np.matmul(coef, basis)
             approx_matrix = approx_matrix.T.reshape(-1, self.num_states, self.num_states)
+            # Compute the error for each sample.
             approx_matrix -= exact_data
-            if rmse:
-                # Compare using the root-mean-square-error.
-                np.multiply(approx_matrix, approx_matrix, out=approx_matrix)
-                error[bucket_index] = np.mean(approx_matrix) ** .5
-            else:
-                # Compare using the max-abs-diff.
-                np.abs(approx_matrix, out=approx_matrix)
-                error[bucket_index] = np.max(approx_matrix)
-        return error
-
-    def plot(self, name=""):
-        import matplotlib.pyplot as plt
-        self.set_num_buckets()
-        input1_values = self.samples.inputs[0]
-        exact  = self.samples.samples
-        approx = np.empty([len(input1_values), self.num_states, self.num_states])
-        for index, value in enumerate(input1_values):
-            approx[index, :, :] = self.approximate_matrix(value)
-        fig_title = name + " Transfer Function, Δt = %g ms"%self.model.time_step
-        plt.figure(fig_title)
-        if self.num_states < 10: # Otherwise there is not enough room on the figure.
-            plt.suptitle(fig_title)
-        for row_idx, row in enumerate(self.model.state_names):
-            for col_idx, col in enumerate(self.model.state_names):
-                plt.subplot(self.num_states, self.num_states, row_idx*self.num_states + col_idx + 1)
-                plt.title(col + " -> " + row)
-                if isinstance(self.input1, LinearInput):
-                    plt.plot(input1_values, exact[:, row_idx, col_idx], color='k')
-                    plt.plot(input1_values, approx[:, row_idx, col_idx], color='r')
-                elif isinstance(self.input1, LogarithmicInput):
-                    plt.semilogx(input1_values, exact[:, row_idx, col_idx], color='k')
-                    plt.semilogx(input1_values, approx[:, row_idx, col_idx], color='r')
-                if self.num_states < 10: # Otherwise there is not enough room on the figure.
-                    plt.xlabel(self.input1.name, labelpad=1.0)
-                # Draw vertical lines at the bucket boundaries.
-                if self.input1.num_buckets < 100: # Otherwise the plots become unreadable.
-                    for input1_value in self.input1.sample_space(self.input1.num_buckets + 1):
-                        plt.axvline(input1_value)
-        x = .05
-        plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.6, hspace=1.0)
-        plt.show()
+            # Concatenate all of the error measurements into a single big array.
+            error.append(approx_matrix)
+        return np.concatenate(error, axis=None)
 
 class Approx2D(Approx):
     def __init__(self, samples, polynomial):
@@ -245,7 +228,8 @@ class Approx2D(Approx):
         self._make_table()
 
     def _make_table(self):
-        self.table = np.empty([self.input1.num_buckets, self.input2.num_buckets, self.num_states, self.num_states, self.num_terms])
+        self.table = np.empty([self.input1.num_buckets, self.input2.num_buckets,
+                                self.num_states, self.num_states, self.num_terms])
         self.rmse  = np.empty([self.input1.num_buckets, self.input2.num_buckets])
         for (bucket_index1, bucket_index2), (input1_values, input2_values), exact_data in self.samples:
             # Scale the inputs into the range [0,1].
@@ -271,11 +255,10 @@ class Approx2D(Approx):
         coef = self.table[bucket1_index, bucket2_index].reshape(-1, self.num_terms)
         return coef.dot(basis).reshape(self.num_states, self.num_states)
 
-    def measure_error(self, samples=None, rmse=False):
+    def sample_error(self):
         self.set_num_buckets()
-        if samples is None: samples = self.samples
-        error = np.empty([self.input1.num_buckets, self.input2.num_buckets])
-        for (bucket1_index, bucket2_index), (input1_values, input2_values), exact_data in samples:
+        error = []
+        for (bucket1_index, bucket2_index), (input1_values, input2_values), exact_data in self.samples:
             # Get the inputs locations within the bucket space.
             location1 = self.input1.get_bucket_value(input1_values) - bucket1_index
             location2 = self.input2.get_bucket_value(input2_values) - bucket2_index
@@ -283,52 +266,12 @@ class Approx2D(Approx):
             basis = np.empty([self.num_terms, len(input1_values)])
             for term, (power1, power2) in enumerate(self.polynomial.terms):
                 basis[term, :] = (location1 ** power1) * (location2 ** power2)
-            # Compute the approximate matrices.
+            # Compute the approximate matrices for all samples.
             coef = self.table[bucket1_index, bucket2_index].reshape(-1, self.num_terms)
             approx_matrix = np.matmul(coef, basis)
             approx_matrix = approx_matrix.T.reshape(-1, self.num_states, self.num_states)
+            # Compute the error for each sample.
             approx_matrix -= exact_data
-            if rmse:
-                # Compare using the root-mean-square-error.
-                np.multiply(approx_matrix, approx_matrix, out=approx_matrix)
-                error[bucket1_index, bucket2_index] = np.mean(approx_matrix) ** .5
-            else:
-                # Compare using the max-abs-diff.
-                np.abs(approx_matrix, out=approx_matrix)
-                error[bucket1_index, bucket2_index] = np.max(approx_matrix)
-        return error
-
-    def plot(self, name=""):
-        import matplotlib.pyplot as plt
-        fig_title = name + " Transfer Function, Δt = %g ms"%self.model.time_step
-        plt.figure(fig_title)
-        if self.num_states < 10: # Otherwise there is not enough room on the figure.
-            plt.suptitle(fig_title)
-        # This plots a heatmap with one pixel per bucket, so increase the number
-        # of buckets for a nicer looking result.
-        for inp in self.model.inputs:
-            inp.set_num_buckets(max(inp.num_buckets, 100))
-        input_shape = [inp.num_buckets for inp in self.model.inputs]
-        self.samples.sample(1)
-        # 
-        for row_idx, row in enumerate(self.model.state_names):
-            for col_idx, col in enumerate(self.model.state_names):
-                ax = plt.subplot(self.num_states, self.num_states, row_idx*self.num_states + col_idx + 1)
-                plt.title(col + " -> " + row)
-                input1_values  = self.samples.inputs[0]
-                input2_values  = self.samples.inputs[1]
-                input1_buckets = np.array(self.model.input1.get_bucket_value(input1_values), dtype=int)
-                input2_buckets = np.array(self.model.input2.get_bucket_value(input2_values), dtype=int)
-                samples        = self.samples.samples[:, row_idx, col_idx]
-                heatmap = np.full(input_shape, np.nan)
-                heatmap[input1_buckets, input2_buckets] = samples
-                imdata = ax.imshow(heatmap, interpolation='bilinear')
-                plt.colorbar(imdata, ax=ax, format='%g')
-                plt.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
-                plt.ylabel(self.model.input1.name)
-                plt.xlabel(self.model.input2.name)
-        x = .05
-        plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.25, hspace=0.5)
-        plt.show()
-        # Restore the original bucket dimensions.
-        self.set_num_buckets()
+            # Concatenate all of the error measurements into a single big array.
+            error.append(approx_matrix)
+        return np.concatenate(error, axis=None)

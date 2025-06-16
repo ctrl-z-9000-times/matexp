@@ -11,11 +11,9 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
         help="output filename for the solution")
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
-parser.add_argument('--plot', action='store_true',
-        help="show the propagator matrix")
 sim = parser.add_argument_group('simulation parameters')
 sim.add_argument('-t', '--time_step', type=float, required=True,
-        help="")
+        help="milliseconds")
 sim.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")
 sim.add_argument('-e', '--error', type=float, default=1e-4,
@@ -55,7 +53,7 @@ inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
 main(args.nmodl_filename, inputs, args.time_step, args.celsius,
      error=args.error, target=args.target, float_dtype=float_dtype,
-     outfile=args.output, verbose=args.verbose, plot=args.plot,)
+     outfile=args.output, verbose=args.verbose)
 
 _placeholder = lambda: None # Symbol for the CLI script to import and call.
 
