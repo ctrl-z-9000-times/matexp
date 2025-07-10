@@ -29,6 +29,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
     elif model.num_inputs == 2: OptimizerClass = Optimize2D
     else: raise NotImplementedError('too many inputs.')
     optimizer = OptimizerClass(model, error, float_dtype, target, (verbose >= 2))
+    optimizer.run()
     optimized = optimizer.best
 
     if verbose:

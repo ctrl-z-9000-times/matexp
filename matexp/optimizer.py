@@ -81,6 +81,25 @@ class Optimizer:
         assert 0.0 < self.max_error < 1.0
         if self.verbose: print()
 
+    def init_num_buckets(self):
+        raise TypeError('abstract method called')
+
+    def init_polynomial(self):
+        raise TypeError('abstract method called')
+
+    def run(self):
+        # Initial parameters, starting point for iterative search.
+        num_buckets = self.init_num_buckets()
+        polynomial  = self.init_polynomial()
+        # Run the optimization routines.
+        self._optimize_log_scale(num_buckets, polynomial)
+        self._optimize_polynomial(num_buckets, polynomial)
+        # Re-make the final product using all available samples.
+        if self.best.num_samples < len(self.samples):
+            if self.verbose: print('Remaking best approximation with more samples ...\n')
+            self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
+            self.best.benchmark()
+
     def _optimize_log_scale(self, num_buckets: [int], polynomial):
         if not any(isinstance(inp, LogarithmicInput) for inp in self.model.inputs):
             return
@@ -168,20 +187,11 @@ class Optimizer:
         self.best.set_num_buckets()
 
 class Optimize1D(Optimizer):
-    def __init__(self, model, max_error, float_dtype, target, verbose=False):
-        super().__init__(model, max_error, float_dtype, target, verbose)
-        self.input1 = self.model.input1
-        # Initial parameters, starting point for iterative search.
-        num_buckets = [20]
-        polynomial  = 3
-        # Run the optimization routines.
-        self._optimize_log_scale(num_buckets, polynomial)
-        self._optimize_polynomial(num_buckets, polynomial)
-        # Re-make the final product using all available samples.
-        if self.best.num_samples < len(self.samples):
-            if self.verbose: print('Remaking best approximation with all samples ...\n')
-            self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
-            self.best.benchmark()
+    def init_num_buckets(self):
+        return [20]
+
+    def init_polynomial(self):
+        return 3
 
     def _optimize_num_buckets(self, num_buckets, polynomial, max_runtime=None):
         (num_buckets,) = num_buckets
@@ -219,19 +229,11 @@ class Optimize1D(Optimizer):
         return cursor
 
 class Optimize2D(Optimizer):
-    def __init__(self, model, max_error, float_dtype, target, verbose=False):
-        super().__init__(model, max_error, float_dtype, target, verbose)
-        # Initial parameters, starting point for iterative search.
-        num_buckets = [20, 20]
-        polynomial  = [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]]
-        # Run the optimization routines.
-        self._optimize_log_scale(num_buckets, polynomial)
-        self._optimize_polynomial(num_buckets, polynomial)
-        # Re-make the final product using all available samples.
-        if self.best.num_samples < len(self.samples):
-            if self.verbose: print('Remaking best approximation with more samples ...\n')
-            self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
-            self.best.benchmark()
+    def init_num_buckets(self):
+        return [20, 20]
+
+    def init_polynomial(self):
+        return [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]]
 
     def _optimize_num_buckets(self, num_buckets, polynomial, max_runtime=None):
         cursor = Parameters(self, num_buckets, polynomial, self.verbose)
