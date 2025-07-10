@@ -107,7 +107,7 @@ class Approx:
         for inp, num_buckets in zip(self.model.inputs, self.num_buckets):
             inp.set_num_buckets(num_buckets)
 
-    def _ensure_enough_exact_samples(self, safety_factor=10):
+    def _ensure_enough_exact_samples(self, safety_factor=100):
         samples_per_bucket = safety_factor * self.polynomial.num_terms
         # Divide the input space into many more buckets to ensure that the
         # samples are uniformly spaced within each bucket.
@@ -156,7 +156,7 @@ class Approx:
         x = 0
         for inp in self.model.inputs:
             if isinstance(inp, LogarithmicInput):
-                x += 3 # Compute log2. This is a guess, I have no idea how it's actually implemented.
+                x += 4 # log2
             x += 1 # Scale the input value into an index.
             x += 1 # Compute the offset into the table.
         x += self.polynomial.num_var_terms # Compute the terms of the polynomial basis.
@@ -184,7 +184,7 @@ class Approx1D(Approx):
 
     def _make_table(self):
         self.table = np.empty([self.input1.num_buckets, self.num_states, self.num_states, self.num_terms])
-        self.rmse  = np.empty(self.input1.num_buckets)
+        rss_sum = 0
         for (bucket_index,), (input_values,), exact_data in self.samples:
             # Scale the inputs into the range [0,1].
             input1_locations = self.input1.get_bucket_value(input_values) - bucket_index
@@ -193,7 +193,8 @@ class Approx1D(Approx):
             coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
             coef = coef.reshape(self.num_terms, self.num_states, self.num_states).transpose(1,2,0)
             self.table[bucket_index, :, :, :] = coef
-            self.rmse[bucket_index] = (np.sum(rss) / B.size) ** .5
+            rss_sum += np.sum(rss)
+        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def approximate_matrix(self, input1):
         self.set_num_buckets()
@@ -230,7 +231,7 @@ class Approx2D(Approx):
     def _make_table(self):
         self.table = np.empty([self.input1.num_buckets, self.input2.num_buckets,
                                 self.num_states, self.num_states, self.num_terms])
-        self.rmse  = np.empty([self.input1.num_buckets, self.input2.num_buckets])
+        rss_sum = 0
         for (bucket_index1, bucket_index2), (input1_values, input2_values), exact_data in self.samples:
             # Scale the inputs into the range [0,1].
             input1_locations = self.input1.get_bucket_value(input1_values) - bucket_index1
@@ -243,7 +244,8 @@ class Approx2D(Approx):
             coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
             coef = coef.reshape(self.num_terms, self.num_states, self.num_states).transpose(1,2,0)
             self.table[bucket_index1, bucket_index2, :, :, :] = coef
-            self.rmse[bucket_index1, bucket_index2] = (np.sum(rss) / B.size) ** .5
+            rss_sum += np.sum(rss)
+        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def approximate_matrix(self, input1, input2):
         self.set_num_buckets()

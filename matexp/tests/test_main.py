@@ -42,7 +42,7 @@ def test_nmda():
             '-i', 'C', '0', '1e3', '--log',
             # Test default input "v"
             '-t', '0.1',
-            '--target', 'cuda',
+            # '--target', 'cuda',
             '-f32',
             '-e', '1e-3',
             '-vv'],

@@ -37,9 +37,4 @@ class LTI_Model(NMODL_Compiler):
             for col in range(self.num_states):
                 state = [float(x == col) for x in range(self.num_states)]
                 A[sample, :, col] = self.derivative(*inputs[:, sample], *state)
-        matrix = scipy.linalg.expm(A * time_step)
-        # Conserve the sum of the state.
-        # TODO: This is an optional step!!!
-        row_norm = 1.0 / matrix.sum(axis=1)
-        matrix *= np.tile(np.expand_dims(row_norm, 1), (1, self.num_states, 1))
-        return matrix
+        return scipy.linalg.expm(A * time_step)

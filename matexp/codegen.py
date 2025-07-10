@@ -96,7 +96,6 @@ class Codegen:
         return c
 
     def _make_kernel(self, init=False):
-        assert not ((self.target == 'cuda') and init)
         c = ""
         if self.target == 'cuda':
             c += "__device__ "

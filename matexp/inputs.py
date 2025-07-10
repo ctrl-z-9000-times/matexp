@@ -97,6 +97,9 @@ class LogarithmicInput(Input):
         self.bucket_frq     = self.num_buckets / self.log2_range
         self.bucket_width   = self.log2_range / self.num_buckets
 
+    def set_scale(self, scale):
+        self.set_num_buckets(self.num_buckets, scale)
+
     def get_bucket_value(self, input_value):
         log2_value = np.log2(input_value + self.scale)
         return (log2_value - self.log2_minimum) * self.bucket_frq

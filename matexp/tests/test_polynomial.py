@@ -78,8 +78,6 @@ def test_suggestions():
         print(str(poly))
     assert set(linear2.suggest_add()) == {
             PolynomialForm([i1, i2], [[0,0], [0,1], [1,0], [1,1], [2,0]]),
-            PolynomialForm([i1, i2], [[0,0], [0,1], [1,0], [1,1], [2,0], [2,1]]),
             PolynomialForm([i1, i2], [[0,0], [0,1], [1,0], [1,1], [0,2]]),
-            PolynomialForm([i1, i2], [[0,0], [0,1], [1,0], [1,1], [0,2], [1,2]]),
     }
     assert set(linear2.suggest_remove()) == {PolynomialForm([i1, i2], [[0,0], [0,1], [1,0]])}

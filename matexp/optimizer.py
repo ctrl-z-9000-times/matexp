@@ -1,4 +1,4 @@
-from .approx import MatrixSamples, Approx1D, Approx2D
+from .approx import MatrixSamples, Approx, Approx1D, Approx2D
 from .codegen import Codegen
 from .inputs import LinearInput, LogarithmicInput
 from .polynomial import PolynomialForm
@@ -82,38 +82,54 @@ class Optimizer:
         if self.verbose: print()
 
     def _optimize_log_scale(self, num_buckets: [int], polynomial):
-        """
-        Note: use a very small and simple approximation for optimizing the log
-        scale, since the goal is not to solve the problem but rather the goal
-        is to identify the complicated areas of the function and scale them
-        away from the edge of the view.
-        """
         if not any(isinstance(inp, LogarithmicInput) for inp in self.model.inputs):
             return
         if self.verbose: print('Optimizing logarithmic scale ...')
+        scales, errors = self._eval_log_scale(num_buckets, polynomial, 1e-9, 100)
+        # Use the global minima of RMSE.
+        argmin     = np.argmin(errors)
+        min_error  = errors[argmin]
+        best_scale = scales[argmin]
+        # Check if the error is still decreasing at the edges of the sample space.
+        assert min_error < errors[0] and min_error < errors[-1], "failed to find log scale"
+        # Apply the new log scale.
+        for inp in self.model.inputs:
+            if isinstance(inp, LogarithmicInput):
+                inp.set_scale(best_scale)
+        if self.verbose: print(f'Optimial logarithmic scale = {best_scale}\n')
+
+    def _eval_log_scale(self, num_buckets, polynomial, min_scale, num_scales):
+        # Find the logarithmic input.
+        log_inp = [inp for inp in self.model.inputs if isinstance(inp, LogarithmicInput)]
+        assert len(log_inp) == 1, "multiple logarithmic inputs not supported"
+        log_inp = log_inp[0]
+
         # Initialize the input's num_buckets and scale parameters.
         for inp, buckets in zip(self.model.inputs, num_buckets):
             if isinstance(inp, LinearInput):
                 inp.set_num_buckets(buckets)
             elif isinstance(inp, LogarithmicInput):
-                inp.set_num_buckets(buckets, scale=1.0)
-                if self.verbose: print(f'Trying log2({inp.name} + {inp.scale})')
-        # Reduce the scale parameter until the buckets containing zero no longer
-        # have the largest errors.
-        done = False
-        while not done:
-            cursor = Parameters(self, num_buckets, polynomial)
-            done = True
-            for dim, inp in enumerate(self.model.inputs):
-                if not isinstance(inp, LogarithmicInput):
-                    continue
-                other_axes = tuple(x for x in range(self.model.num_inputs) if x != dim)
-                errors = np.max(cursor.rmse, axis=other_axes)
-                if np.argmax(errors) == 0:
-                    inp.set_num_buckets(inp.num_buckets, inp.scale / 10)
-                    if self.verbose: print(f'Trying log2({inp.name} + {inp.scale})')
-                    done = False
-        if self.verbose: print('Done optimizing logarithmic scale\n')
+                inp.set_num_buckets(buckets, scale=min_scale)
+
+        # Search the range [min_scale, log_inp.maximum] at exponentially increasing intervals.
+        search_space = log_inp.sample_space(num_scales + 1)[1:] # Do not try scale=zero
+
+        # Collect all of the samples before building any polynomials.
+        for scale in search_space:
+            log_inp.set_scale(scale)
+            Approx(self.samples, polynomial)._ensure_enough_exact_samples()
+
+        if   self.model.num_inputs == 1: ApproxClass = Approx1D
+        elif self.model.num_inputs == 2: ApproxClass = Approx2D
+
+        # Measure the error associated with each scale parameter.
+        if self.verbose: print(f'Evaluating {num_scales} scales ...')
+        errors = []
+        for scale in search_space:
+            log_inp.set_scale(scale)
+            approx = ApproxClass(self.samples, polynomial)
+            errors.append(approx.rmse)
+        return search_space, errors
 
     def _optimize_polynomial(self, num_buckets, polynomial):
         self.best = self._optimize_num_buckets(num_buckets, polynomial)
@@ -156,7 +172,7 @@ class Optimize1D(Optimizer):
         super().__init__(model, max_error, float_dtype, target, verbose)
         self.input1 = self.model.input1
         # Initial parameters, starting point for iterative search.
-        num_buckets = [10]
+        num_buckets = [20]
         polynomial  = 3
         # Run the optimization routines.
         self._optimize_log_scale(num_buckets, polynomial)
@@ -174,7 +190,7 @@ class Optimize1D(Optimizer):
         # Quickly increase the num_buckets until it exceeds the target accuracy.
         while cursor.error > self.max_error:
             # Terminate early if it's slower than max_runtime.
-            if max_runtime is not None and cursor.num_buckets1 > 1000:
+            if max_runtime is not None: # and cursor.num_buckets1 > 1000:
                 cursor.benchmark()
                 if cursor.runtime > max_runtime:
                     if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}) runs too slow.\n')
@@ -205,13 +221,15 @@ class Optimize1D(Optimizer):
 class Optimize2D(Optimizer):
     def __init__(self, model, max_error, float_dtype, target, verbose=False):
         super().__init__(model, max_error, float_dtype, target, verbose)
-        self._optimize_log_scale([10, 10],
-                [[0, 0], [1, 0], [0, 1], [2, 0], [0, 2], [3, 0], [0, 3],])
-        self._optimize_polynomial([20, 20],
-                [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]])
+        # Initial parameters, starting point for iterative search.
+        num_buckets = [20, 20]
+        polynomial  = [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]]
+        # Run the optimization routines.
+        self._optimize_log_scale(num_buckets, polynomial)
+        self._optimize_polynomial(num_buckets, polynomial)
         # Re-make the final product using all available samples.
         if self.best.num_samples < len(self.samples):
-            if self.verbose: print('Remaking best approximation with all samples ...\n')
+            if self.verbose: print('Remaking best approximation with more samples ...\n')
             self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
             self.best.benchmark()
 

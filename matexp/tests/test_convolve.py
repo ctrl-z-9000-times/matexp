@@ -68,7 +68,7 @@ def test_autoconvolve():
     scipy_roi = scipy_result[roi_start:roi_end]
 
     # Compare the two signals.
-    atol = 1e-12
+    atol = 1e-15
     assert np.all(np.abs(matexp_result - scipy_roi) < atol)
 
     # Check the truncated portions of the signal.

@@ -1,6 +1,5 @@
 """
 Measure and analyse the approximation error.
-This treats every cell of the matrix independently.
 Compare matexp's internal error model with empirical measurements.
 """
 from matexp import main, LinearInput, LogarithmicInput
@@ -9,6 +8,7 @@ from matexp.convolve import autoconvolve
 from matexp.lti_model import LTI_Model
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.stats
 
 # Experimental setup.
 error_arg   = 0.001
@@ -71,12 +71,14 @@ error_hist, error_range = autoconvolve(error_hist, error_range, instances, epsil
 error_bins      = np.linspace(*error_range, len(error_hist)+1)
 bin_width       = error_bins[1] - error_bins[0]
 bin_centers     = 0.5 * (error_bins[:-1] + error_bins[1:])
+error_dist      = scipy.stats.rv_histogram((error_hist, error_bins), density=False)
 print("Model-state error summary")
 print("bins:        ", len(error_hist))
 print("bin-width:   ", bin_width)
 print("mean:        ", np.average(bin_centers, weights=error_hist))
-print("50%:         ", model_dist.ppf(.50))
-print("99%:         ", model_dist.ppf(.99))
+print("50% act:     ", error_dist.ppf(.50))
+print("99% act:     ", error_dist.ppf(.99))
+print("99% est:     ", model_dist.ppf(.99))
 print()
 
 # Visualize the model-state errors.

@@ -86,6 +86,8 @@ class PolynomialForm:
                 new_poly = self._from_perimeter(self.inputs, terms_set)
                 suggestions.add(new_poly)
         suggestions.discard(self)
+        # Discard suggestions that add or remove more than one term.
+        suggestions = filter(lambda x: abs(len(x) - len(self)) == 1, suggestions)
         # Sort the suggestions from worst to best, so that the caller can pop
         # suggestions off of the end of the list.
         #   * Suggest removing the highest degree terms first.
