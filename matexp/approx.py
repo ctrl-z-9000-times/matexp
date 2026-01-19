@@ -1,6 +1,5 @@
 from .inputs import LinearInput, LogarithmicInput
 from .polynomial import PolynomialForm
-from .convolve import autoconvolve
 import math
 import numpy as np
 import scipy.stats
@@ -120,24 +119,22 @@ class Approx:
         self.set_num_buckets()
 
     def measure_error(self):
-        error_data      = self.sample_error()
-        self.error_dist = self.error_distribution(error_data)
-        return self.error_dist.ppf(.99)
+        self.samples = MatrixSamples(self.model, self.samples.verbose)
+        self._ensure_enough_exact_samples()
+        return self.measure_residual_error()
 
-    def error_distribution(self, error_data):
-        error_data      = np.abs(error_data)
-        # Measure the distribution of approximation errors.
-        error_range     = (0.0, np.max(error_data))
-        error_bins      = np.linspace(*error_range, 2**12+1)
-        error_hist, error_bins = np.histogram(error_data, bins=error_bins)
-        error_hist      = error_hist / len(error_data)
-        bin_width       = error_bins[1] - error_bins[0]
-        # Estimate the accumulation of errors.
-        instances       = round(self.num_states * 1000 / self.model.time_step)
-        error_hist, error_range = autoconvolve(error_hist, error_range, instances)
-        error_bins      = np.linspace(*error_range, len(error_hist)+1)
-        #
-        return scipy.stats.rv_histogram((error_hist, error_bins), density=False)
+    def measure_residual_error(self):
+        max_abs_error = 0
+        self.set_num_buckets()
+        for (bucket_indices, input_values, samples) in self.samples:
+            for input_vector, exact in zip(zip(*input_values), samples):
+                approx = self.approximate_matrix(*input_vector)
+                # Increase the timestep to 1 ms
+                approx = np.linalg.matrix_power(approx, round(1 / self.model.time_step))
+                exact  = np.linalg.matrix_power(exact, round(1 / self.model.time_step))
+                # Find the max-abs-diff between the approx and exact samples.
+                max_abs_error += np.max(np.abs(approx - exact))
+        return max_abs_error
 
     def __str__(self):
         s = ''
@@ -170,7 +167,6 @@ class Approx1D(Approx):
     def __init__(self, samples, polynomial):
         super().__init__(samples, polynomial)
         self.input1 = self.model.input1
-        assert len(self.polynomial) == self.num_terms, 'Unimplemented'
         self._ensure_enough_exact_samples()
         self._make_table()
 
@@ -203,23 +199,6 @@ class Approx1D(Approx):
         coef  = self.table[bucket_index].reshape(-1, self.num_terms)
         return coef.dot(basis).reshape(self.num_states, self.num_states)
 
-    def sample_error(self):
-        self.set_num_buckets()
-        error = []
-        for (bucket_index,), (input_values,), exact_data in self.samples:
-            # Get the locations of the inputs within this bucket.
-            locations = self.input1.get_bucket_value(input_values) - bucket_index
-            # Compute the approximate matrices for all samples.
-            basis = self._polynomial_basis(locations, self.num_terms).T
-            coef = self.table[bucket_index].reshape(-1, self.num_terms)
-            approx_matrix = np.matmul(coef, basis)
-            approx_matrix = approx_matrix.T.reshape(-1, self.num_states, self.num_states)
-            # Compute the error for each sample.
-            approx_matrix -= exact_data
-            # Concatenate all of the error measurements into a single big array.
-            error.append(approx_matrix)
-        return np.concatenate(error, axis=None)
-
 class Approx2D(Approx):
     def __init__(self, samples, polynomial):
         super().__init__(samples, polynomial)
@@ -249,31 +228,10 @@ class Approx2D(Approx):
 
     def approximate_matrix(self, input1, input2):
         self.set_num_buckets()
-        bucket1_index, bucket1_location = self.input1.get_bucket_location(input1)
-        bucket2_index, bucket2_location = self.input2.get_bucket_location(input2)
+        bucket1_index, bucket1_location = self.input1._get_bucket_location_array(input1)
+        bucket2_index, bucket2_location = self.input2._get_bucket_location_array(input2)
         basis = np.empty(self.num_terms)
         for term, (power1, power2) in enumerate(self.polynomial.terms):
             basis[term] = (bucket1_location ** power1) * (bucket2_location ** power2)
         coef = self.table[bucket1_index, bucket2_index].reshape(-1, self.num_terms)
         return coef.dot(basis).reshape(self.num_states, self.num_states)
-
-    def sample_error(self):
-        self.set_num_buckets()
-        error = []
-        for (bucket1_index, bucket2_index), (input1_values, input2_values), exact_data in self.samples:
-            # Get the inputs locations within the bucket space.
-            location1 = self.input1.get_bucket_value(input1_values) - bucket1_index
-            location2 = self.input2.get_bucket_value(input2_values) - bucket2_index
-            # Compute the basis for all of the samples in this bucket.
-            basis = np.empty([self.num_terms, len(input1_values)])
-            for term, (power1, power2) in enumerate(self.polynomial.terms):
-                basis[term, :] = (location1 ** power1) * (location2 ** power2)
-            # Compute the approximate matrices for all samples.
-            coef = self.table[bucket1_index, bucket2_index].reshape(-1, self.num_terms)
-            approx_matrix = np.matmul(coef, basis)
-            approx_matrix = approx_matrix.T.reshape(-1, self.num_states, self.num_states)
-            # Compute the error for each sample.
-            approx_matrix -= exact_data
-            # Concatenate all of the error measurements into a single big array.
-            error.append(approx_matrix)
-        return np.concatenate(error, axis=None)

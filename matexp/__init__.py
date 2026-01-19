@@ -28,9 +28,14 @@ def main(nmodl_filename, inputs, time_step, temperature,
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
     elif model.num_inputs == 2: OptimizerClass = Optimize2D
     else: raise NotImplementedError('too many inputs.')
-    optimizer = OptimizerClass(model, error, float_dtype, target, (verbose >= 2))
+    optimizer = OptimizerClass(model, error * .90, float_dtype, target, (verbose >= 2))
     optimizer.run()
     optimized = optimizer.best
+
+    # Quality control.
+    measured_error = optimized.approx.measure_error()
+    if measured_error > error:
+        print(f"WARNING: error exceeds target {measured_error} > {error}")
 
     if verbose:
         print(optimized)
@@ -45,6 +50,20 @@ def main(nmodl_filename, inputs, time_step, temperature,
             f.write(nmodl_text)
     return optimized
 
+def _initial_state(array_module, num_states, conserve_sum, num_instances, float_dtype):
+    # Generate valid initial states, for testing and benchmarks.
+    state = [array_module.random.uniform(size=num_instances) for x in range(num_states)]
+    state = [array_module.array(x, dtype=float_dtype) for x in state]
+    if conserve_sum is not None:
+        conserve_sum = float(conserve_sum)
+        sum_states = array_module.zeros(num_instances, dtype=float_dtype)
+        for array in state:
+            sum_states = sum_states + array
+        correction_factor = conserve_sum / sum_states
+        for array in state:
+            array *= correction_factor
+    return state
+
 def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
     num_instances = 10 * 1000
     num_repetions = 200
@@ -56,17 +75,8 @@ def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
         xp = cupy
         start_event = cupy.cuda.Event()
         end_event   = cupy.cuda.Event()
-    # Generate valid initial states.
-    state = [xp.array(xp.random.uniform(size=num_instances), dtype=float_dtype)
-                for x in range(num_states)]
-    if conserve_sum is not None:
-        conserve_sum = float(conserve_sum)
-        sum_states = xp.zeros(num_instances)
-        for data in state:
-            sum_states = sum_states + data
-        correction_factor = conserve_sum / sum_states
-        for data in state:
-            data *= correction_factor
+    # 
+    state = _initial_state(xp, num_states, conserve_sum, num_instances, float_dtype)
     # 
     input_indicies = xp.arange(num_instances, dtype=np.int32)
     elapsed_times = np.empty(num_repetions)

@@ -29,8 +29,7 @@ class Parameters:
         self.num_samples = len(self.optimizer.samples)
         # Measure the accuracy of these parameters.
         self.rmse       = self.approx.rmse
-        self.error      = self.approx.measure_error()
-        self.error_dist = self.approx.error_dist
+        self.error      = self.approx.measure_residual_error()
         if self.verbose:
             status = 'PASS' if self.error <= self.optimizer.max_error else 'FAIL'
             print(f'Error: {self.error}  \t{status}\n')

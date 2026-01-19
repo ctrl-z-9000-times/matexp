@@ -44,6 +44,15 @@ class Input:
             location -= bucket_index
         return (bucket_index, location)
 
+    def _get_bucket_location_array(self, input_value_array):
+        """ Returns pair of (bucket_index, location_within_bucket) """
+        location = self.get_bucket_value(input_value_array)
+        location = np.clip(location, 0, self.num_buckets)
+        bucket_index = np.floor(location).astype(np.int64)
+        np.minimum(bucket_index, self.num_buckets-1, out=bucket_index)
+        location -= bucket_index
+        return (bucket_index, location)
+
     def sample_space(self, number):
         """ Note: this includes the endpoint. """
         number = int(number)
