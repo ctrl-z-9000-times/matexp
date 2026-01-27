@@ -6,12 +6,12 @@ evaluating the DERIVATIVE blocks contained in them.
 import math
 import os.path
 import re
-import nmodl.ast
-import nmodl.dsl
-import nmodl.symtab
+from neuron.nmodl import ast
+from neuron.nmodl import dsl
+from neuron.nmodl import symtab
 from .inputs import (Input, LinearInput, LogarithmicInput)
 
-ANT = nmodl.ast.AstNodeType
+ANT = ast.AstNodeType
 
 class NMODL_Compiler:
     def __init__(self, nmodl_filename, inputs, temperature):
@@ -21,23 +21,23 @@ class NMODL_Compiler:
         self._gather_states()
         self._gather_parameters()
         self._gather_conserve_statements()
-        nmodl.dsl.visitor.KineticBlockVisitor().visit_program(self.AST)
+        dsl.visitor.KineticBlockVisitor().visit_program(self.AST)
         self._gather_code_blocks()
         self._gather_inputs(inputs)
         self._compile_derivative_block(temperature)
 
     def _setup_parser(self):
         with open(self.nmodl_filename, 'rt') as f: nmodl_text = f.read()
-        self.AST = nmodl.dsl.NmodlDriver().parse_string(nmodl_text)
-        nmodl.symtab.SymtabVisitor().visit_program(self.AST)
-        nmodl.dsl.visitor.InlineVisitor().visit_program(self.AST)
-        self.visitor = nmodl.dsl.visitor.AstLookupVisitor()
+        self.AST = dsl.NmodlDriver().parse_string(nmodl_text)
+        symtab.SymtabVisitor().visit_program(self.AST)
+        dsl.visitor.InlineVisitor().visit_program(self.AST)
+        self.visitor = dsl.visitor.AstLookupVisitor()
         self.lookup  = lambda n: self.visitor.lookup(self.AST, n)
         self.symbols = self.AST.get_symbol_table()
         # Helpful debugging readouts:
-        if False: print(nmodl.dsl.to_nmodl(self.AST))
+        if False: print(dsl.to_nmodl(self.AST))
         if False: print(self.AST.get_symbol_table())
-        if False: nmodl.ast.view(self.AST)
+        if False: ast.view(self.AST)
 
     def _gather_name(self):
         x = self.lookup(ANT.SUFFIX)
@@ -45,7 +45,7 @@ class NMODL_Compiler:
         else: self.name = os.path.splitext(os.path.split(self.filename)[1])[0]
 
     def _gather_states(self):
-        states = self.symbols.get_variables_with_properties(nmodl.symtab.NmodlType.state_var)
+        states = self.symbols.get_variables_with_properties(symtab.NmodlType.state_var)
         self.state_names = sorted(x.get_name() for x in states)
         self.num_states = len(self.state_names)
 
@@ -66,7 +66,7 @@ class NMODL_Compiler:
         elif len(conserve_statements) > 1:
             raise ValueError("Multiple CONSERVE statements are not supported.")
         stmt    = conserve_statements[0]
-        states  = nmodl.dsl.to_nmodl(stmt.react).split('+')
+        states  = dsl.to_nmodl(stmt.react).split('+')
         if set(states) != set(self.state_names) or not stmt.expr.is_number():
             raise ValueError('CONSERVE statement must be in the form: sum-of-all-states = number.')
         self.conserve_sum = float(stmt.expr.eval())
@@ -154,7 +154,7 @@ class NMODL_Compiler:
             lhsn = AST.lhs.name.get_node_name()
             return [AssignStatement(lhsn, NMODL_Compiler._parse_expression(AST.rhs),
                     derivative = is_derivative,)]
-        raise ValueError("Unsupported syntax at %s."%nmodl.dsl.to_nmodl(original))
+        raise ValueError("Unsupported syntax at %s."%dsl.to_nmodl(original))
 
     @classmethod
     def _parse_expression(cls, AST):
@@ -186,7 +186,7 @@ class NMODL_Compiler:
             if name == 'fabs':  name = 'math.abs'
             if name == 'exp':   name = 'math.exp'
             return f'{name}({args})'
-        raise ValueError("Unsupported syntax at %s."%nmodl.dsl.to_nmodl(AST))
+        raise ValueError("Unsupported syntax at %s."%dsl.to_nmodl(AST))
 
 class CodeBlock:
     def __init__(self, AST):
