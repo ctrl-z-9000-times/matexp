@@ -1,3 +1,0 @@
-[submodule "backward_euler/eigen"]
-	path = backward_euler/eigen
-	url = https://github.com/BlueBrain/eigen.git
