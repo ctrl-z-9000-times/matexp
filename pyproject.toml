@@ -27,5 +27,5 @@
         "Operating System :: OS Independent",
     ]
     requires-python = ">=3.8"
-    dependencies = ["neuron", "numpy", "scipy", "matplotlib"]
+    dependencies = ["neuron", "numpy", "scipy"]
     scripts = {matexp = "matexp:__main__._placeholder"}
