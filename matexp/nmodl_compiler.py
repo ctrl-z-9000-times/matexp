@@ -151,7 +151,10 @@ class NMODL_Compiler:
         if is_derivative: AST = AST.expression
         if AST.is_binary_expression():
             assert AST.op.eval() == "="
-            lhsn = AST.lhs.name.get_node_name()
+            lhs = AST.lhs
+            if hasattr(AST.lhs, "name"):
+                lhs = lhs.name
+            lhsn = lhs.get_node_name()
             return [AssignStatement(lhsn, NMODL_Compiler._parse_expression(AST.rhs),
                     derivative = is_derivative,)]
         raise ValueError("Unsupported syntax at %s."%dsl.to_nmodl(original))
