@@ -192,8 +192,12 @@ class Codegen:
                   f"        }}\n"
                   f"    }}\n"
                    "    // Compute the dot product.\n"
-                  f"    real scratch[{self.num_states}] = {{0.0}};\n"
-                  f"    const real s = {self.conserve_sum / self.num_states};\n"
+                  f"    real scratch[{self.num_states}] = {{0.0}};\n")
+            if self.conserve_sum is not None:
+                c += f"    const real s = {self.conserve_sum / self.num_states};\n"
+            else:
+                c += f"    const real s = 0.0;\n"
+            c += (
                   f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
                   f"            scratch[row] += matrix[row * {self.num_states} + col] * s;\n"
@@ -317,8 +321,8 @@ class Codegen:
                 lambda x: x.group(0) + solver_impl + solve_procedure,
                 nmodl_text)
         # Replace the SOLVE statements.
-        initial_regex = r"SOLVE\s+\w+\s+STEADYSTATE\s+sparse"
-        breakpoint_regex = r"SOLVE\s+\w+\s+METHOD\s+sparse"
+        initial_regex = r"\bSOLVE\s+\w+\s+STEADYSTATE\s+(sparse|matexp)\b"
+        breakpoint_regex = r"\bSOLVE\s+\w+\s+METHOD\s+(sparse|matexp)\b"
         nmodl_text = re.sub(initial_regex, solve_initial, nmodl_text)
         nmodl_text = re.sub(breakpoint_regex, solve_breakpoint, nmodl_text)
         return nmodl_text

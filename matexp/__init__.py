@@ -51,7 +51,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
     return optimized
 
 def _initial_state(array_module, num_states, conserve_sum, num_instances, float_dtype):
-    # Generate valid initial states, for testing and benchmarks.
+    """ Generate valid initial states, for testing and benchmarks. """
     state = [array_module.random.uniform(size=num_instances) for x in range(num_states)]
     state = [array_module.array(x, dtype=float_dtype) for x in state]
     if conserve_sum is not None:
@@ -87,6 +87,7 @@ def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
             input_arrays.append(input_indicies)
         _clear_CPU_cache(xp)
         time.sleep(0) # Try to avoid task switching while running.
+        os.sched_yield()
         if target == 'cuda':
             start_event.record()
             f(num_instances, *input_arrays, *state)

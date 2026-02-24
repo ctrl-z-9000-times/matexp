@@ -79,19 +79,26 @@ def measure_speed(num_instances, continuous):
 ten_k = measure_speed(10000, False)
 print("10k", ten_k)
 
-x = 0
-y = 1000
+elapsed_ms      = 0
+num_instances   = 1000
+multiplier      = .01
+prev_direction  = False
 while True:
-    y = round(y)
-    x = measure_speed(y, True)
-    if x < 1:
-        y *= 1.01
+    elapsed_ms = measure_speed(num_instances, True)
+    if direction := elapsed_ms < 1:
+        num_instances *= 1 + multiplier
     else:
-        y *= 0.99
-    print(x, y)
+        num_instances *= 1 - multiplier
+    if direction != prev_direction:
+        multiplier *= .9
+        prev_direction = direction
+    num_instances = round(num_instances)
+    print(elapsed_ms, multiplier, num_instances)
+    if multiplier < .001: # ~20 iterations
+        break
 
 # 
 data_file = Path("gpu_data").joinpath(model_name)
-with open(data_file, 'rt') as file:
+with open(data_file, 'wt') as file:
     print(ten_k, file=file)
-    print(y, file=file)
+    print(num_instances, file=file)

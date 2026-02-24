@@ -77,7 +77,7 @@ class Optimizer:
         self.verbose        = bool(verbose)
         self.samples        = MatrixSamples(self.model, self.verbose)
         self.best           = None # This attribute will store the optimized parameters.
-        assert 0.0 < self.max_error < 1.0
+        assert 0.0 < self.max_error
         if self.verbose: print()
 
     def init_num_buckets(self):
@@ -214,7 +214,12 @@ class Optimize1D(Optimizer):
             if new.error < cursor.error:
                 cursor = new
             else:
-                raise RuntimeError("Failed to reach target accuracy.")
+                # Remake the cursor with more samples and recheck
+                cursor = Parameters(self, cursor.num_buckets, cursor.polynomial, self.verbose)
+                if new.error < cursor.error:
+                    cursor = new
+                else:
+                    raise RuntimeError("Failed to reach target accuracy.")
         # Slowly reduce the num_buckets until it fails to meet the target accuracy.
         while True:
             num_buckets *= 0.9
@@ -268,7 +273,12 @@ class Optimize2D(Optimizer):
             if new.error < cursor.error:
                 cursor = new
             else:
-                raise RuntimeError("Failed to reach target accuracy.")
+                # Remake the cursor with more samples and recheck
+                cursor = Parameters(self, cursor.num_buckets, cursor.polynomial, self.verbose)
+                if new.error < cursor.error:
+                    cursor = new
+                else:
+                    raise RuntimeError("Failed to reach target accuracy.")
         # Slowly reduce the num_buckets until it fails to meet the target accuracy.
         decrease = lambda x: x * .90
         while True:

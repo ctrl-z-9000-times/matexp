@@ -118,6 +118,8 @@ class NMODL_Compiler:
 
     def _compile_derivative_block(self, temperature):
         scope = {'celsius': float(temperature)} # Allow NMODL file to override temperature.
+        for inp in self.inputs:
+            scope[inp.name] = inp.minimum
         scope.update(self.parameters)
         pycode = self.initial_block.to_python()
         arguments = [inp.name for inp in self.inputs] + self.state_names
@@ -186,8 +188,14 @@ class NMODL_Compiler:
         if AST.is_function_call():
             name = AST.name.get_node_name()
             args = ', '.join(cls._parse_expression(x) for x in AST.arguments)
-            if name == 'fabs':  name = 'math.abs'
-            if name == 'exp':   name = 'math.exp'
+            import_from_mathlib = [
+                "sqrt", "sin", "cos", "tan", "acos", "asin", "atan", "atan2", "sinh",
+                "cosh", "tanh", "floor", "ceil", "fmod", "log10", "log",
+                "pow", "exp", "erf", "factorial"]
+            if name in import_from_mathlib:
+                name = 'math.' + name
+            if name == 'fabs':
+                name = 'abs'
             return f'{name}({args})'
         raise ValueError("Unsupported syntax at %s."%dsl.to_nmodl(AST))
 
