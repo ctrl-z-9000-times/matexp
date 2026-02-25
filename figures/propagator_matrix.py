@@ -4,14 +4,16 @@ Plot the propagator matrix function
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 from matexp import main, LinearInput, LogarithmicInput
 from matexp.lti_model import LTI_Model
 
 time_step   = 0.1
 temperature = 37
-model       = "mod/NMDA.mod"
-model       = "mod/Nav11_6state.mod"
-v_input     = LinearInput("v", -100, 100)
+root_dir    = Path(__file__).parent.parent
+model       = root_dir / "mod" / "NMDA.mod"
+model       = root_dir / "mod" / "Nav11_6state.mod"
+v_input     = LinearInput("v", -90, 60)
 g_input     = LogarithmicInput('C', 0, 1e3)
 all_inputs  = [v_input, g_input]
 self        = LTI_Model(model, all_inputs, time_step, temperature)
@@ -28,7 +30,7 @@ if self.num_inputs == 1:
     # Sample the inputs.
     input1 = self.inputs[0]
     input1.set_num_buckets(1)
-    input1 = input1.sample_space(100)
+    input1 = input1.sample_space(200)
     # Compute the exact propagator matrix.
     exact = self.make_matrix(input1.reshape(1, -1))
     # Setup each subplot.

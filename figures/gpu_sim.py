@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-"""
-"""
 from pathlib import Path
 from pprint import pprint
 import argparse
@@ -75,10 +73,14 @@ def measure_speed(num_instances, continuous):
     # 
     elapsed_ms = cupy.cuda.get_elapsed_time(start_event, end_event)
     return elapsed_ms
-
-ten_k = measure_speed(10000, False)
-print("10k", ten_k)
-
+# 
+batch_size = 1000
+batch_samples = []
+for _ in range(200):
+    batch_samples.append(measure_speed(batch_size, False))
+batch_time = min(batch_samples)
+print(f"batch {batch_size} x {batch_time} ms")
+# 
 elapsed_ms      = 0
 num_instances   = 1000
 multiplier      = .01
@@ -97,8 +99,10 @@ while True:
     if multiplier < .001: # ~20 iterations
         break
 
+print(f"throughput {num_instances} x")
+
 # 
 data_file = Path("gpu_data").joinpath(model_name)
 with open(data_file, 'wt') as file:
-    print(ten_k, file=file)
+    print(batch_time, file=file)
     print(num_instances, file=file)

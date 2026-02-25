@@ -3,3 +3,4 @@ __pycache__/
 *.csv
 x86_64/
 *.log
+*.png
