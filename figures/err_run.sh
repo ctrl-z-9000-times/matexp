@@ -26,9 +26,9 @@ time_steps=(
 )
 
 for dt in "${time_steps[@]}"; do
-    python benchmark.py $SEED matexp $dt $CELLS
-    python benchmark.py $SEED sparse $dt $CELLS
-    python benchmark.py $SEED approx $dt $CELLS
+    python benchmark.py "err_data/matexp_$dt" $SEED matexp $dt $CELLS
+    python benchmark.py "err_data/sparse_$dt" $SEED sparse $dt $CELLS
+    python benchmark.py "err_data/approx_$dt" $SEED approx $dt $CELLS
 done
 
-python err_plot.py
+python err_plot.py err_data

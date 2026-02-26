@@ -15,20 +15,22 @@ import sys
 import utils
 
 parser = argparse.ArgumentParser()
-parser.add_argument("SEED", type=int, default=0)
+parser.add_argument("OUT_FILE", type=Path)
+parser.add_argument("SEED", type=int, default=None)
 parser.add_argument("METHOD", type=str, choices=["matexp", "approx", "sparse"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
+parser.add_argument("--f32", action='store_true')
 args = parser.parse_args()
 
 # Compile and load the MOD files into NEURON
 mod_files = []
-mod_files.append("hh_markov.mod")
-mod_files.append("presyn.mod")
+# mod_files.append("hh_markov.mod")
+# mod_files.append("presyn.mod")
 # mod_files.extend(Path(__file__).parent.parent.joinpath("mod").glob("*.mod"))
-mod_files.append("../mod/Nav11.mod")
-mod_files.append("../mod/Kv11_6.mod")
-neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37)
+mod_files.append("../mod/Nav11_6state.mod")
+mod_files.append("../mod/Kv11_6state.mod")
+neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, f32=args.f32)
 mechanisms = utils.mechanism_names(mod_files) # This function depends on neuron being loaded first
 n = neuron.n
 from neuron.units import ms, mV, µm
@@ -137,10 +139,9 @@ for m_name, states in mechanisms.items():
     final_state[m_name] = data
 
 # Dump final state to file
-data_dir = Path("err_data")
-data_file = f"{args.METHOD}_{1000 * args.TIME_STEP}"
-os.makedirs(data_dir, exist_ok=True)
-with open(data_dir.joinpath(data_file), 'wb') as f:
+data_file = Path(args.OUT_FILE)
+os.makedirs(data_dir.parent, exist_ok=True)
+with open(data_file, 'wb') as f:
     pickle.dump((args.SEED, final_state), f)
 
 print("[[END OF BENCHMARK]]", file=sys.stderr)

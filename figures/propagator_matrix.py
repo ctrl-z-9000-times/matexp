@@ -95,5 +95,5 @@ elif self.num_inputs == 2:
     x = .05
     plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.25, hspace=0.5)
 
-fig.savefig(self.name + ".png", dpi=600, bbox_inches='tight', pad_inches=0)
+fig.savefig(self.name + ".png", dpi=600, bbox_inches='tight')
 plt.show()

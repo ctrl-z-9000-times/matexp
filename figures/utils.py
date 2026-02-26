@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 
-def load(mod_files, method, dt=None, c=None, error=None):
+def load(mod_files, method, dt=None, c=None, error=None, f32=False):
     global neuron
     # Locate the argument NMODL files and copy them to a temporary directory for processing.
     out_dir = Path(tempfile.mkdtemp())
@@ -41,6 +41,8 @@ def load(mod_files, method, dt=None, c=None, error=None):
         cmd = ["matexp", "-v", "-v", "-t", str(dt), "-c", str(c)]
         if error:
             cmd.extend(["-e", str(error)])
+        if f32:
+            cmd.extend(["-f", "32"])
         cmd.extend(["--input", "v", "-100", "100"])
         cmd.extend(["--input", "C", "0", "10"])
         for in_path in in_dir.iterdir():
