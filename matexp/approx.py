@@ -73,7 +73,7 @@ class MatrixSamples:
         self.sort()
         flat_indices = self._get_bucket_flat_indices()
         bucket_shape = self._get_bucket_shape()
-        num_buckets  = np.product(bucket_shape)
+        num_buckets  = np.prod(bucket_shape)
         slice_bounds = np.nonzero(np.diff(flat_indices, prepend=-1, append=num_buckets))[0]
         inputs  = [[] for _ in range(self.model.num_inputs)]
         samples = []

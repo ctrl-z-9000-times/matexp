@@ -208,7 +208,7 @@ class Optimize1D(Optimizer):
             # Heuristics to guess new num_buckets.
             orders_of_magnitude = math.log(cursor.error / self.max_error, 10)
             pct_incr = max(1.5, 1.7 ** orders_of_magnitude)
-            num_buckets = num_buckets * pct_incr
+            num_buckets = min(num_buckets * pct_incr, num_buckets + 2000)
             new = Parameters(self, num_buckets, polynomial, self.verbose)
             # Check that the error is decreasing monotonically.
             if new.error < cursor.error:
@@ -245,7 +245,7 @@ class Optimize2D(Optimizer):
         increase = lambda x: x * 1.50
         while cursor.error > self.max_error:
             # Terminate early if it's already slower than max_runtime.
-            if max_runtime is not None and np.product(cursor.num_buckets) > 1000:
+            if max_runtime is not None and np.prod(cursor.num_buckets) > 1000:
                 cursor.benchmark()
                 if cursor.runtime > max_runtime:
                     if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}), runs too slow.\n')

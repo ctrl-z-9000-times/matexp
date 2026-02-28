@@ -78,8 +78,8 @@ class Codegen:
             c += "__global__ "
         c += f"void {self.name}_advance(int n_inst, "
         for inp in self.input_names:
-            c += f"real* {inp}, int* {inp}_indices, "
-        c +=  ", ".join(f"real* {state}" for state in self.state_names)
+            c += f"double* {inp}, int* {inp}_indices, "
+        c +=  ", ".join(f"double* {state}" for state in self.state_names)
         c +=  ") {\n"
         if self.target == 'host':
             c +=  "    for(int index = 0; index < n_inst; ++index) {\n"
@@ -88,7 +88,7 @@ class Codegen:
                   "    if( index >= n_inst ) { return; }\n")
         access_inputs = ', '.join(f"{inp}[{inp}_indices[index]]" for inp in self.input_names)
         access_states = ', '.join(f"{state} + index" for state in self.state_names)
-        c += (f"        real* state[{self.num_states}] = {{{access_states}}};\n"
+        c += (f"        double* state[{self.num_states}] = {{{access_states}}};\n"
               f"        {self.name}_kernel({access_inputs}, state);\n")
         if self.target == 'host':
             c +=  "    }\n"
@@ -105,10 +105,12 @@ class Codegen:
             kernel_name = f"{self.name}_kernel"
         c += f"__inline__ extern void {kernel_name}("
         for idx in range(len(self.inputs)):
-            c += f"real input{idx}, "
-        c += (f"real* state[{self.num_states}]) {{\n"
+            c += f"double input{idx}_f64, "
+        c += (f"double* state[{self.num_states}]) {{\n"
               f"    const real* __restrict__ tbl_ptr = {self.name}_table;\n"
                "    // Locate the input within the look-up table.\n")
+        for idx in range(len(self.inputs)):
+            c += f"real input{idx} = (real) input{idx}_f64;\n"
         for idx, inp in enumerate(self.inputs):
             if isinstance(inp, LinearInput):
                 c += f"    input{idx} = (input{idx} - {inp.minimum}) * {inp.bucket_frq};\n"
@@ -158,7 +160,7 @@ class Codegen:
         if not init:
             c += (f"    real scratch[{self.num_states}] = {{0.0}};\n"
                   f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
-                   "        const real s = *state[col];\n"
+                   "        const real s = (real) *state[col];\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
                    "            // Approximate this entry of the matrix.\n"
                   f"            const real polynomial = {polynomial};\n"
@@ -215,7 +217,7 @@ class Codegen:
                   "    }\n")
         c += ("    // Move the results into the state arrays.\n"
              f"    for(int x = 0; x < {self.num_states}; ++x) {{\n"
-              "        *state[x] = scratch[x];\n"
+              "        *state[x] = (double) scratch[x];\n"
               "    }\n"
               "}\n\n")
         return c
@@ -223,7 +225,7 @@ class Codegen:
     def load(self):
         if fn := getattr(self, "_load_cache", False): return fn
         fn_name  = self.name + "_advance"
-        real_t   = "numpy." + self.float_dtype.__name__
+        real_t   = "numpy.float64"
         index_t  = "numpy.int32"
         scope    = {"numpy": np}
         arrays = [] # Name of input
@@ -274,10 +276,10 @@ class Codegen:
         fn = so[self.name + "_advance"]
         argtypes = [ctypes.c_int]
         for _ in self.inputs:
-            argtypes.append(np.ctypeslib.ndpointer(dtype=self.float_dtype, ndim=1, flags='C'))
+            argtypes.append(np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C'))
             argtypes.append(np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C'))
         for _ in range(self.num_states):
-            argtypes.append(np.ctypeslib.ndpointer(dtype=self.float_dtype, ndim=1, flags='C'))
+            argtypes.append(np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C'))
         fn.argtypes = argtypes
         fn.restype = None
         os.remove(src_file.name)
@@ -301,7 +303,7 @@ class Codegen:
         solve_procedure = (
             f"PROCEDURE solve_{self.name}_matexp() {{\n"
              "  VERBATIM\n"
-            f"    real* state[{self.num_states}] = {{{states}}};\n"
+            f"    double* state[{self.num_states}] = {{{states}}};\n"
             f"    {self.name}_kernel({inputs}, state);\n"
              "  ENDVERBATIM\n"
              "}\n\n")
@@ -309,7 +311,7 @@ class Codegen:
              "VERBATIM\n"
             f"    assert(dt == {self.model.time_step});\n"
             f"    assert(celsius == {self.model.temperature});\n"
-            f"    real* state[{self.num_states}] = {{{states}}};\n"
+            f"    double* state[{self.num_states}] = {{{states}}};\n"
             f"    initial_{self.name}_kernel({inputs}, state);\n"
             "ENDVERBATIM\n")
 

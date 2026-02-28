@@ -21,16 +21,16 @@ parser.add_argument("METHOD", type=str, choices=["matexp", "approx", "sparse"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
 parser.add_argument("--f32", action='store_true')
+parser.add_argument("--error", type=float, default=1e-4)
 args = parser.parse_args()
 
 # Compile and load the MOD files into NEURON
-mod_files = []
-# mod_files.append("hh_markov.mod")
-# mod_files.append("presyn.mod")
+mod_files = ["presyn.mod"]
 # mod_files.extend(Path(__file__).parent.parent.joinpath("mod").glob("*.mod"))
+# mod_files.append("hh_markov.mod")
 mod_files.append("../mod/Nav11_6state.mod")
-mod_files.append("../mod/Kv11_6state.mod")
-neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, f32=args.f32)
+mod_files.append("../mod/Kv11_4state.mod")
+neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, error=args.error, f32=args.f32)
 mechanisms = utils.mechanism_names(mod_files) # This function depends on neuron being loaded first
 n = neuron.n
 from neuron.units import ms, mV, µm
@@ -140,7 +140,7 @@ for m_name, states in mechanisms.items():
 
 # Dump final state to file
 data_file = Path(args.OUT_FILE)
-os.makedirs(data_dir.parent, exist_ok=True)
+os.makedirs(data_file.parent, exist_ok=True)
 with open(data_file, 'wb') as f:
     pickle.dump((args.SEED, final_state), f)
 

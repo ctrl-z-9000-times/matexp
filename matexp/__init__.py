@@ -76,14 +76,14 @@ def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
         start_event = cupy.cuda.Event()
         end_event   = cupy.cuda.Event()
     # 
-    state = _initial_state(xp, num_states, conserve_sum, num_instances, float_dtype)
+    state = _initial_state(xp, num_states, conserve_sum, num_instances, np.float64)
     # 
     input_indicies = xp.arange(num_instances, dtype=np.int32)
     elapsed_times = np.empty(num_repetions)
     for trial in range(num_repetions):
         input_arrays = []
         for inp in inputs:
-            input_arrays.append(inp.random(num_instances, float_dtype, xp))
+            input_arrays.append(inp.random(num_instances, np.float64, xp))
             input_arrays.append(input_indicies)
         _clear_CPU_cache(xp)
         time.sleep(0) # Try to avoid task switching while running.
