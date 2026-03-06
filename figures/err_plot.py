@@ -67,12 +67,29 @@ for method in methods:
             traces[method][mech][0].append(dt)
             traces[method][mech][1].append(max_err)
 
+# Find the min/max error for each method at each time step.
+error_bounds = {}
+for method, mech_data in traces.items():
+    error_bounds[method] = {}
+    for mech, (dt_data, err_data) in mech_data.items():
+        for dt, err in zip(dt_data, err_data):
+            if dt not in error_bounds[method]:
+                error_bounds[method][dt] = [err, err]
+            else:
+                error_bounds[method][dt][0] = min(err, error_bounds[method][dt][0])
+                error_bounds[method][dt][1] = max(err, error_bounds[method][dt][1])
+
 plt.figure("Accuracy Comparison")
 for method, mech_data in traces.items():
     for mech, (dt, err) in mech_data.items():
         if args.MECHANISMS and mech not in args.MECHANISMS:
             continue
-        plt.loglog(dt, err, label=f"{method}: {mech}")
+        plt.loglog(dt, err, label=f"{method}: {mech}", color='lightgrey')
+
+for method, mech_data in traces.items():
+    dt, min_max = zip(*sorted(error_bounds[method].items()))
+    min_err, max_err = zip(*min_max)
+    plt.fill_between(dt, min_err, max_err, alpha=.2)
 
 plt.ylabel("error")
 plt.xlabel("Δt (μs)")

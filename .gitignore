@@ -4,3 +4,5 @@ __pycache__/
 x86_64/
 *.log
 *.png
+MenonEtAl2009/
+f32_data

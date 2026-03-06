@@ -11,24 +11,24 @@ import pickle
 traces = {
     "matexp": {},
     "sparse": {},
-    "approx": {},
-    "approx2": {},
+    "approx32": {},
+    "approx64": {},
 }
 
 for file in Path('hh_traces').iterdir():
     with open(file, 'rb') as f:
-        t, v = pickle.load(f)
+        data = pickle.load(f)
     if file.name.count("_") == 1:
         method, time_step = file.name.split("_")
-        traces[method][time_step] = (t, v)
+        traces[method][time_step] = data
     else:
         method, time_step, accuracy = file.name.split("_")
-        traces["approx2"][accuracy] = (t, v)
+        traces["approx2"][accuracy] = data
 # Sort by dt
 for method, data in traces.items():
     traces[method] = dict(sorted(data.items(), key=lambda pair: float(pair[0])))
 
-plt.figure("Hodgkin Huxley Demonstration")
+plt.figure("Menon et al. (2009)")
 
 def setup_plot():
     plt.ylabel("potential (mV)")

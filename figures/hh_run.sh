@@ -27,13 +27,14 @@ max_errors=(
 )
 
 for dt in "${time_steps[@]}"; do
-    python hh_sim.py approx $dt
-    python hh_sim.py sparse $dt
-    python hh_sim.py matexp $dt
+    python menon2009.py approx64 $dt
+    python menon2009.py approx32 $dt
+    python menon2009.py sparse $dt
+    python menon2009.py matexp $dt
 done
 
 for err in "${max_errors[@]}"; do
-    python hh_sim.py approx .025 $err
+    python menon2009.py approx .025 $err
 done
 
 python hh_plot.py

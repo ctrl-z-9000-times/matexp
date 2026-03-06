@@ -7,7 +7,30 @@ import shutil
 import subprocess
 import tempfile
 
-def load(mod_files, method, dt=None, c=None, error=None, f32=False):
+def get_solver(nmodl_text):
+    print(nmodl_text)
+    for match in re.finditer(r"\sMETHOD\s+(\w+)\b", nmodl_text):
+        return match.groups()[0]
+    for match in re.finditer(r"\sSTEADYSTATE\s+(\w+)\b", nmodl_text):
+        return match.groups()[0]
+
+def set_solver(mod_dir, method):
+    # Fixup each file
+    for path in Path(mod_dir).glob("*.mod"):
+        with open(path, 'rt') as f:
+            text = f.read()
+        # 
+        if get_solver(text) in ["cnexp"]:
+            continue
+        # Replace the solver method
+        if not method.startswith("approx"):
+            text = re.sub(r"\sMETHOD\s+\w+\s", f" METHOD {method}\n", text)
+            text = re.sub(r"\sSTEADYSTATE\s+\w+\s", f" STEADYSTATE {method}\n", text)
+        # 
+        with open(path, 'wt') as f:
+            f.write(text)
+
+def load(mod_files, method, dt=None, c=None, error=None):
     global neuron
     # Locate the argument NMODL files and copy them to a temporary directory for processing.
     out_dir = Path(tempfile.mkdtemp())
@@ -20,19 +43,10 @@ def load(mod_files, method, dt=None, c=None, error=None, f32=False):
                 shutil.copy2(p, out_dir)
         else:
             raise ValueError("No such file", path)
-    # Fixup each file
-    for path in out_dir.iterdir():
-        with open(path, 'rt') as f:
-            text = f.read()
-        # Replace the solver method
-        if method != "approx":
-            text = re.sub(r"\sMETHOD\s+\w+\s", f" METHOD {method}\n", text)
-            text = re.sub(r"\sSTEADYSTATE\s+\w+\s", f" STEADYSTATE {method}\n", text)
-        # 
-        with open(path, 'wt') as f:
-            f.write(text)
+    # 
+    set_solver(out_dir, method)
     # Build the approximation
-    if method == "approx":
+    if method.startswith("approx"):
         in_dir = out_dir
         out_dir = Path(tempfile.mkdtemp())
         presyn = in_dir.joinpath("presyn.mod")
@@ -41,7 +55,7 @@ def load(mod_files, method, dt=None, c=None, error=None, f32=False):
         cmd = ["matexp", "-v", "-v", "-t", str(dt), "-c", str(c)]
         if error:
             cmd.extend(["-e", str(error)])
-        if f32:
+        if method.endwith("32"):
             cmd.extend(["-f", "32"])
         cmd.extend(["--input", "v", "-100", "100"])
         cmd.extend(["--input", "C", "0", "10"])
