@@ -133,7 +133,8 @@ class Approx:
                 approx = np.linalg.matrix_power(approx, round(1 / self.model.time_step))
                 exact  = np.linalg.matrix_power(exact, round(1 / self.model.time_step))
                 # Find the max-abs-diff between the approx and exact samples.
-                max_abs_error += np.max(np.abs(approx - exact))
+                sample_error = np.max(np.abs(approx - exact))
+                max_abs_error = max(max_abs_error, sample_error)
         return max_abs_error
 
     def __str__(self):
