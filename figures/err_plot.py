@@ -84,7 +84,8 @@ for method, mech_data in traces.items():
     for mech, (dt, err) in mech_data.items():
         if args.MECHANISMS and mech not in args.MECHANISMS:
             continue
-        plt.loglog(dt, err, label=f"{method}: {mech}", color='lightgrey')
+        marker = '*' if len(dt) == 1 else None
+        plt.loglog(dt, err, label=f"{method}: {mech}", color='lightgrey', marker=marker)
 
 for method, mech_data in traces.items():
     dt, min_max = zip(*sorted(error_bounds[method].items()))

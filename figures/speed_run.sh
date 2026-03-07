@@ -13,5 +13,6 @@ CELLS=1000
 SEED=$RANDOM
 CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED sparse $DT $CELLS 2> speed_data/sparse
 CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED matexp $DT $CELLS 2> speed_data/matexp
-CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED approx $DT $CELLS 2> speed_data/approx
-python speed_plot.py $DT
+CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED approx32 $DT $CELLS 2> speed_data/approx32
+CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED approx64 $DT $CELLS 2> speed_data/approx64
+python speed_plot.py $DT $CELLS

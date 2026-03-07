@@ -8,7 +8,6 @@ import subprocess
 import tempfile
 
 def get_solver(nmodl_text):
-    print(nmodl_text)
     for match in re.finditer(r"\sMETHOD\s+(\w+)\b", nmodl_text):
         return match.groups()[0]
     for match in re.finditer(r"\sSTEADYSTATE\s+(\w+)\b", nmodl_text):
@@ -55,7 +54,7 @@ def load(mod_files, method, dt=None, c=None, error=None):
         cmd = ["matexp", "-v", "-v", "-t", str(dt), "-c", str(c)]
         if error:
             cmd.extend(["-e", str(error)])
-        if method.endwith("32"):
+        if method.endswith("32"):
             cmd.extend(["-f", "32"])
         cmd.extend(["--input", "v", "-100", "100"])
         cmd.extend(["--input", "C", "0", "10"])

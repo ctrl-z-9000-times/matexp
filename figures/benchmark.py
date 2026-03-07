@@ -17,10 +17,9 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument("OUT_FILE", type=Path)
 parser.add_argument("SEED", type=int, default=None)
-parser.add_argument("METHOD", type=str, choices=["matexp", "approx", "sparse"])
+parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64", "sparse"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
-parser.add_argument("--f32", action='store_true')
 parser.add_argument("--error", type=float, default=1e-4)
 args = parser.parse_args()
 
@@ -30,7 +29,7 @@ mod_files = ["presyn.mod"]
 # mod_files.append("hh_markov.mod")
 mod_files.append("../mod/Nav11_6state.mod")
 mod_files.append("../mod/Kv11_4state.mod")
-neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, error=args.error, f32=args.f32)
+neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, error=args.error)
 mechanisms = utils.mechanism_names(mod_files) # This function depends on neuron being loaded first
 n = neuron.n
 from neuron.units import ms, mV, µm
