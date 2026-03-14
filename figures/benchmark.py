@@ -21,14 +21,15 @@ parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
 parser.add_argument("--error", type=float, default=1e-4)
+parser.add_argument("MODELS", type=str, choices=["all", "dedup"])
 args = parser.parse_args()
 
 # Compile and load the MOD files into NEURON
-mod_files = ["presyn.mod"]
-# mod_files.extend(Path(__file__).parent.parent.joinpath("mod").glob("*.mod"))
-# mod_files.append("hh_markov.mod")
-mod_files.append("../mod/Nav11_6state.mod")
-mod_files.append("../mod/Kv11_4state.mod")
+mod_dir = Path(__file__).parent.parent.joinpath("mod")
+if args.MODELS == "all":
+    mod_files = utils.all_mod_files()
+elif args.MODELS == "dedup":
+    mod_files = utils.dedup_mod_files()
 neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, error=args.error)
 mechanisms = utils.mechanism_names(mod_files) # This function depends on neuron being loaded first
 n = neuron.n

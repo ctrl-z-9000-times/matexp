@@ -29,6 +29,26 @@ def set_solver(mod_dir, method):
         with open(path, 'wt') as f:
             f.write(text)
 
+def all_mod_files():
+    fig_dir = Path(__file__).parent
+    mod_dir = fig_dir.parent.joinpath("mod")
+    mod_files = [fig_dir / "presyn.mod"]
+    mod_files.extend(mod_dir.glob("*.mod"))
+    return mod_files
+
+def dedup_mod_files():
+    fig_dir = Path(__file__).parent
+    mod_dir = fig_dir.parent.joinpath("mod")
+    mod_files = [fig_dir / "presyn.mod"]
+    mod_files.append(mod_dir / "AMPA_13state.mod")
+    mod_files.append(mod_dir / "NMDA_10state.mod")
+    mod_files.append(mod_dir / "Nav11_6state.mod")
+    mod_files.append(mod_dir / "Kv11_4state.mod")
+    mod_files.append(mod_dir / "Kv11_6state.mod")
+    mod_files.append(mod_dir / "Kv11_11state.mod")
+    mod_files.append(mod_dir / "Kv11_13state.mod")
+    return mod_files
+
 def load(mod_files, method, dt=None, c=None, error=None):
     global neuron
     # Locate the argument NMODL files and copy them to a temporary directory for processing.
