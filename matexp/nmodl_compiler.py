@@ -3,19 +3,19 @@ Front-end for reading the users NMODL files, extracting key information, and
 evaluating the DERIVATIVE blocks contained in them.
 """
 
-import math
-import os.path
-import re
+from .inputs import (Input, LinearInput, LogarithmicInput)
 from neuron.nmodl import ast
 from neuron.nmodl import dsl
 from neuron.nmodl import symtab
-from .inputs import (Input, LinearInput, LogarithmicInput)
+from pathlib import Path
+import math
+import re
 
 ANT = ast.AstNodeType
 
 class NMODL_Compiler:
     def __init__(self, nmodl_filename, inputs, temperature):
-        self.nmodl_filename = os.path.abspath(str(nmodl_filename))
+        self.nmodl_filename = Path(nmodl_filename).resolve()
         self._setup_parser()
         self._gather_name()
         self._gather_states()
@@ -42,7 +42,7 @@ class NMODL_Compiler:
     def _gather_name(self):
         x = self.lookup(ANT.SUFFIX)
         if x: self.name = x[0].name.get_node_name()
-        else: self.name = os.path.splitext(os.path.split(self.filename)[1])[0]
+        else: self.name = self.nmodl_filename.stem
 
     def _gather_states(self):
         states = self.symbols.get_variables_with_properties(symtab.NmodlType.state_var)

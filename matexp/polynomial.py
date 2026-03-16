@@ -5,6 +5,8 @@ class PolynomialForm:
         self.inputs = tuple(getattr(inp, 'name', inp) for inp in inputs)
         if isinstance(polynomial, PolynomialForm):
             self.terms = polynomial.terms
+        elif isinstance(polynomial, str):
+            self.terms = self.parse(inputs, polynomial).terms
         elif len(self.inputs) == 1 and isinstance(polynomial, int):
             self.terms = tuple((power,) for power in range(polynomial + 1))
         else:
@@ -40,6 +42,40 @@ class PolynomialForm:
             elif len(parts) == 0:
                 terms_list.append("1")
         return " + ".join(terms_list)
+
+    @classmethod
+    def parse(cls, inputs, polynomial):
+        inputs = list(getattr(inp, 'name', inp) for inp in inputs)
+        polynomial = polynomial.replace("(", "").replace(")", "")
+        # Parse the polynomial into a python structure
+        result = []
+        for term in polynomial.split("+"):
+            result.append([])
+            for factor in term.split("*"):
+                if '^' in factor:
+                    base, exponent = factor.split('^')
+                else:
+                    if factor.strip() == '1':
+                        continue
+                    base = factor
+                    exponent = '1'
+                base = base.strip()
+                exponent = int(exponent.strip())
+                result[-1].append([base, exponent])
+        # Fill in missing factors so each term is complete.
+        for term in result:
+            term.sort()
+            for idx, input_name in enumerate(inputs):
+                if idx >= len(term) or term[idx][0] != input_name:
+                    term.insert(idx, (input_name, 0))
+            factors = [factor[0] for factor in term]
+            if inputs != factors:
+                error = ', '.join(set(factors) - set(inputs))
+                raise ValueError(f"extra variables: {error}")
+            # Reformat the results: strip away the input names.
+            for idx, factor in enumerate(term):
+                term[idx] = factor[1]
+        return cls(inputs, result)
 
     def __eq__(self, other):
         return ((type(self) is type(other)) and

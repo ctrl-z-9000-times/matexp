@@ -11,9 +11,12 @@ For more information see:
 
 # Written by David McDougall, 2022-2025
 
+from .approx import Approx1D, Approx2D, MatrixSamples
+from .codegen import Codegen
 from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
+from pathlib import Path
 import numpy as np
 import os
 import time
@@ -41,14 +44,33 @@ def main(nmodl_filename, inputs, time_step, temperature,
         print(optimized)
 
     if outfile:
-        outfile = os.path.abspath(outfile)
-        if os.path.isdir(outfile):
-            outfile = os.path.join(outfile, os.path.basename(model.nmodl_filename))
-        assert outfile != model.nmodl_filename
-        nmodl_text = optimized.backend.get_nmodl_text()
-        with open(outfile, 'wt') as f:
-            f.write(nmodl_text)
+        _save_model(model, optimized.backend.get_nmodl_text(), outfile)
+
     return optimized
+
+def main_manual(nmodl_filename, inputs, time_step, temperature,
+            polynomial, float_dtype, target,
+            outfile, verbose=False):
+    model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
+    samples = MatrixSamples(model, (verbose >= 2))
+    if   model.num_inputs == 1: ApproxClass = Approx1D
+    elif model.num_inputs == 2: ApproxClass = Approx2D
+    else: raise NotImplementedError('too many inputs.')
+    approx = ApproxClass(samples, polynomial)
+    codegen = Codegen(approx, float_dtype, target)
+    if verbose:
+        print(str(approx).strip())
+        residual = approx.measure_residual_error()
+        print("Residual error: %.3g"%residual)
+    _save_model(model, codegen.get_nmodl_text(), outfile)
+
+def _save_model(model, nmodl_text, outfile):
+    outfile = Path(outfile).resolve()
+    if outfile.is_dir():
+        outfile = outfile / Path(model.nmodl_filename).name
+    assert outfile != model.nmodl_filename, "operation would overwrite input file"
+    with open(outfile, 'wt') as f:
+        f.write(nmodl_text)
 
 def _initial_state(array_module, num_states, conserve_sum, num_instances, float_dtype):
     """ Generate valid initial states, for testing and benchmarks. """
@@ -105,4 +127,6 @@ def _clear_CPU_cache(array_module):
     # least-recently-used replacement policy, touching every piece of data once
     # should be sufficient to put it into the cache.
     big_data = array_module.empty(int(32e6 / 8), dtype=np.int64)
+    big_data += 1
+    big_data += 1
     big_data += 1

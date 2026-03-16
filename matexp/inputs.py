@@ -7,12 +7,14 @@ import numpy as np
 
 class Input:
     """ Abstract base class. """
-    def __init__(self, name, minimum, maximum):
+    def __init__(self, name, minimum, maximum, num_buckets=None):
         self.name       = str(name)
         self.minimum    = float(minimum)
         self.maximum    = float(maximum)
         self.range      = self.maximum - self.minimum
         assert self.minimum < self.maximum
+        if num_buckets is not None:
+            self.set_num_buckets(num_buckets)
 
     def __repr__(self):
         return f"matexp.{type(self).__name__}({self.name}, {self.minimum}, {self.maximum})"

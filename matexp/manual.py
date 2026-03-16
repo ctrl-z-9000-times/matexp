@@ -1,14 +1,17 @@
-from matexp import main, LinearInput, LogarithmicInput
+"""
+Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.
+"""
+from matexp import main_manual, LinearInput, LogarithmicInput
 import argparse
 import numpy as np
+import re
 
-parser = argparse.ArgumentParser(prog='matexp',
-        description="Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.",)
+parser = argparse.ArgumentParser(prog='matexp-manual', description=__doc__)
 parser.add_argument('nmodl_filename',
         metavar='INPUT_PATH',
-        help="input path for unsolved NMODL file")
+        help="path of unsolved NMODL file")
 parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
-        help="output path for solved NMODL file")
+        help="path for solved NMODL file")
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
@@ -16,12 +19,12 @@ sim.add_argument('-t', '--time_step', type=float, required=True,
         help="milliseconds")
 sim.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")
-sim.add_argument('-e', '--error', type=float, default=1e-4,
-        help="maximum absolute error per millisecond. default: 10^-4")
+sim.add_argument('-p', '--polynomial', type=str, required=True,
+        help="")
 inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
-        nargs=3, metavar=('NAME', 'MIN', 'MAX'),
-        help="")
+        nargs=4, metavar=('NAME', 'MIN', 'MAX', 'BINS'),
+        help="input name, bounds, and number of paritions")
 inputs.add_argument('--log', nargs='?', action='append', default=[],
         metavar='INPUT',
         help="scale input logarithmically, for chemical concentrations")
@@ -37,8 +40,8 @@ elif args.float == '64': float_dtype = np.float64
 
 # Gather & organize all information about the inputs.
 inputs = {}
-for (name, minimum, maximum) in args.input:
-    inputs[name] = [LinearInput, (name, minimum, maximum)]
+for (name, minimum, maximum, bins) in args.input:
+    inputs[name] = [LinearInput, (name, minimum, maximum, bins)]
 for name in args.log:
     if name is None:
         if len(inputs) == 1:
@@ -51,9 +54,9 @@ for name in args.log:
 # Create the input data structures.
 inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
-main(args.nmodl_filename, inputs, args.time_step, args.celsius,
-     error=args.error, target=args.target, float_dtype=float_dtype,
-     outfile=args.output, verbose=args.verbose)
+main_manual(args.nmodl_filename, inputs, args.time_step, args.celsius,
+        args.polynomial, target=args.target, float_dtype=float_dtype,
+        outfile=args.output, verbose=args.verbose)
 
 _placeholder = lambda: None # Symbol for the CLI script to import and call.
 
