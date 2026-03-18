@@ -49,9 +49,7 @@ def dedup_mod_files():
     mod_files.append(mod_dir / "Kv11_13state.mod")
     return mod_files
 
-def load(mod_files, method, dt=None, c=None, error=None):
-    global neuron
-    # Locate the argument NMODL files and copy them to a temporary directory for processing.
+def copy_mod_files(mod_files):
     out_dir = Path(tempfile.mkdtemp())
     for path in mod_files:
         path = Path(path).resolve()
@@ -62,6 +60,12 @@ def load(mod_files, method, dt=None, c=None, error=None):
                 shutil.copy2(p, out_dir)
         else:
             raise ValueError("No such file", path)
+    return out_dir
+
+def load(mod_files, method, dt=None, c=None, error=None):
+    global neuron
+    # Locate the argument NMODL files and copy them to a temporary directory for processing.
+    out_dir = copy_mod_files(mod_files)
     # 
     set_solver(out_dir, method)
     # Build the approximation
@@ -80,13 +84,16 @@ def load(mod_files, method, dt=None, c=None, error=None):
         cmd.extend(["--input", "C", "0", "10"])
         for in_path in in_dir.iterdir():
             subprocess.run(cmd + [in_path, out_dir], check=True)
-    # 
+    # Compile the NMODL files
+    return build_models(out_dir, method in ["matexp"])
+
+def build_models(mod_dir, nmodl):
     cwd = os.getcwd()
-    os.chdir(out_dir)
-    print("MOD DIR:", out_dir)
+    os.chdir(mod_dir)
+    print("MOD DIR:", mod_dir)
     # Compile the NMODL files
     build_command = ["nrnbuild.py", "--parallel", "7", "--verbose"]
-    if method in ["matexp"]:
+    if nmodl:
         build_command.append("--nmodl")
     else:
         pass # Use nocmodl

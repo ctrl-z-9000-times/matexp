@@ -12,7 +12,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64", "sparse"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("ACCURACY", type=float, nargs='?', default=None)
-parser.add_argument('--F32', action='store_true')
 args = parser.parse_args()
 
 # Go to the directory containing this file.
@@ -21,20 +20,21 @@ import os
 os.chdir(repo)
 
 # Download the modeldb project.
-if not Path('MenonEtAl2009').exists():
+MenonEtAl2009 = repo / 'MenonEtAl2009'
+if not MenonEtAl2009.exists():
     ascension_number = 222716
     model_url = f"https://modeldb.science/download/{ascension_number}"
-    print(f'Downloading:', model_url)
+    print('Downloading:', model_url)
     myfile = requests.get(model_url)
     zip_filename = Path(f'{ascension_number}.zip')
     with open(zip_filename, 'wb') as f:
         f.write(myfile.content)
     #
-    print(f"Unzipping:", zip_filename)
+    print("Unzipping:", zip_filename)
     zipfile.ZipFile(zip_filename).extractall()
     zip_filename.unlink()
 
-os.chdir(repo / 'MenonEtAl2009')
+os.chdir(MenonEtAl2009)
 
 mod_files = [
     "ih.mod",
@@ -48,7 +48,23 @@ mod_files = [
     "synampa.mod",
     "vms.mod"]
 
-neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=35, error=args.ACCURACY)
+out_dir = utils.copy_mod_files(mod_files)
+utils.set_solver(out_dir, args.METHOD)
+
+# Run the matexp program if necessary
+if args.METHOD.startswith("approx"):
+    cmd = ["matexp", "-v", "-v", "-t", str(args.TIME_STEP), "-c", "35"]
+    if args.ACCURACY:
+        cmd.extend(["-e", str(args.ACCURACY)])
+    else:
+        cmd.extend(["-e", ".001"])
+    if args.METHOD.endswith("32"):
+        cmd.extend(["-f", "32"])
+    cmd.extend(["--input", "v", "-70", "30"])
+    for in_path in ["nafast.mod", "naslow.mod"]:
+        subprocess.run(cmd + [in_path, out_dir], check=True)
+
+neuron = utils.build_models(mod_files, True)
 n = neuron.n
 n.xopen("ri06_runAPtrain.hoc")
 
@@ -79,7 +95,7 @@ traces = (time_trace.as_numpy(),
     distal_trace.as_numpy())
 
 # Dump the trace to a file
-data_dir = Path("hh_traces")
+data_dir = repo / "ap_traces"
 data_file = f"{args.METHOD}_{1000 * args.TIME_STEP}"
 if args.ACCURACY:
     data_file += f"_{args.ACCURACY}"

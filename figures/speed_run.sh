@@ -2,7 +2,7 @@
 set -ex
 
 # Redirect stdout and stderr to a log file.
-exec > >(tee -i speed_run.log)
+exec > >(tee -i speed_log.txt)
 exec 2>&1
 
 rm -rf speed_data

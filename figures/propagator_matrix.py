@@ -30,7 +30,7 @@ if self.num_inputs == 1:
     # Sample the inputs.
     input1 = self.inputs[0]
     input1.set_num_buckets(1)
-    input1 = input1.sample_space(200)
+    input1 = input1.sample_space(1000)
     # Compute the exact propagator matrix.
     exact = self.make_matrix(input1.reshape(1, -1))
     # Setup each subplot.

@@ -2,7 +2,7 @@
 set -ex
 
 # Redirect stdout and stderr to a log file.
-exec > >(tee -i err_run.log)
+exec > >(tee -i err_log.txt)
 exec 2>&1
 
 rm -rf err_data
