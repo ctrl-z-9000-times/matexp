@@ -64,7 +64,7 @@ if args.METHOD.startswith("approx"):
     for in_path in ["nafast.mod", "naslow.mod"]:
         subprocess.run(cmd + [in_path, out_dir], check=True)
 
-neuron = utils.build_models(mod_files, True)
+neuron = utils.build_models(out_dir, True)
 n = neuron.n
 n.xopen("ri06_runAPtrain.hoc")
 

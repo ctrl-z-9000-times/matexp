@@ -35,11 +35,6 @@ def main(nmodl_filename, inputs, time_step, temperature,
     optimizer.run()
     optimized = optimizer.best
 
-    # Quality control.
-    measured_error = optimized.approx.measure_error()
-    if measured_error > error:
-        print(f"WARNING: error exceeds target {measured_error} > {error}")
-
     if verbose:
         print(optimized)
 

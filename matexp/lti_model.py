@@ -33,8 +33,8 @@ class LTI_Model(NMODL_Compiler):
         # 
         num_samples = inputs.shape[-1]
         A = np.empty([num_samples, self.num_states, self.num_states])
-        for sample in range(num_samples):
-            for col in range(self.num_states):
-                state = [float(x == col) for x in range(self.num_states)]
-                A[sample, :, col] = self.derivative(*inputs[:, sample], *state)
+        for col in range(self.num_states):
+            state = np.zeros([self.num_states, num_samples])
+            state[col, :] = 1
+            A[:, :, col] = np.transpose(self.derivative(*inputs, *state))
         return scipy.linalg.expm(A * time_step)
