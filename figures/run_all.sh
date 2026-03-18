@@ -11,6 +11,6 @@ bash speed_run.sh
 
 bash gpu_run.sh
 
-bash hh_run.sh
+bash ap_run.sh
 
 python speed_vs_accuracy.py

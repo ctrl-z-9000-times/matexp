@@ -55,7 +55,6 @@ for index, (method, mech_speed) in enumerate(speed_data):
     offset = width * multiplier
     rects = ax.bar(x + offset, mech_speed, width, label=method, 
         color=cmc.batlow(index / (len(speed_data)-.5)))
-        # color=cmc.batlowS(index))
     multiplier += 1
 
 # 

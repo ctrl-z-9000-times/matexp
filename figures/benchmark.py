@@ -20,7 +20,7 @@ parser.add_argument("SEED", type=int, default=None)
 parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64", "sparse"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
-parser.add_argument("--error", type=float, default=1e-4)
+parser.add_argument("--error", type=float, default=1e-3)
 parser.add_argument("MODELS", type=str, choices=["all", "dedup"])
 args = parser.parse_args()
 
@@ -114,7 +114,7 @@ for m_name, states in mechanisms.items():
                     setattr(m_inst, g, 0.)
             # Assign initial inputs
             setattr(seg, 'v', initial_inputs['v'][cell_idx])
-for presyn_inst in presyn:
+for cell_idx, presyn_inst in enumerate(presyn):
     setattr(presyn_inst, 'C', initial_inputs['C'][cell_idx])
 
 # Run the experiment

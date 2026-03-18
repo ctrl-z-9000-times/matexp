@@ -16,8 +16,8 @@ sim.add_argument('-t', '--time_step', type=float, required=True,
         help="milliseconds")
 sim.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")
-sim.add_argument('-e', '--error', type=float, default=1e-4,
-        help="maximum absolute error per millisecond. default: 10^-4")
+sim.add_argument('-e', '--error', type=float, default=1e-3,
+        help="maximum absolute error per millisecond. default: 10^-3")
 inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=3, metavar=('NAME', 'MIN', 'MAX'),

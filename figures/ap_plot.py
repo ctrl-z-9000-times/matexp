@@ -4,6 +4,7 @@ Plot the data in "ap_traces/"
 """
 
 from pathlib import Path
+import cmcrameri.cm as cmc
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -13,7 +14,7 @@ traces = {
     "sparse": {},
     "approx32": {},
     "approx64": {},
-    "approx2": {},
+    "accuracy": {},
 }
 
 # Load the AP trace data.
@@ -25,7 +26,7 @@ for file in Path('ap_traces').iterdir():
         traces[method][time_step] = data
     else:
         method, time_step, accuracy = file.name.split("_")
-        traces["approx2"][accuracy] = data
+        traces["accuracy"][accuracy] = data
 
 # Sort by dt.
 for method, data in traces.items():
@@ -45,23 +46,23 @@ titles = [
     "Backwards Euler Method",
     "Approximate Matrix Exponential Method vs Time Step",
     "Approximate Matrix Exponential Method vs Accuracy",]
-methods = ["matexp", "sparse", "approx64", "approx2"]
+methods = ["matexp", "sparse", "approx64", "accuracy"]
 
-t_min, t_max = (0, 100)
+t_min, t_max = (125, 130)
 
 for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     axes = grid[row, col]
     title = titles[index]
     method = methods[index]
     # 
-    axes.set_title(title)
-    axes.text(t_min, 60, chr(ord("A") + index), ha='left', va='top')
-    for time_step, (t, v) in traces[method].items():
-        label = f"max error = {error}" if method == "approx2" else f"Δt = {time_step}"
-        axes.plot(t, v, label=label)
+    axes.text(t_min+.4, 15, chr(ord("A") + index), ha='left', va='top')
+    num_traces = len(traces[method])
+    for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
+        label = f"max error = {value}" if index == 3 else f"Δt = {value}"
+        axes.plot(t, v, label=label, color=cmc.batlow(trace_index / num_traces))
     axes.set_xlabel("time (ms)")
-    axes.set_xlim(xmin=100, xmax=150)
-    axes.set_yticks([])
+    axes.set_xlim(xmin=t_min, xmax=t_max)
+    # axes.set_yticks([])
     axes.legend()
 
 fig.savefig("ap_demo.png", dpi=600, bbox_inches='tight')

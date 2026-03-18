@@ -94,6 +94,7 @@ for method, mech_data in traces.items():
 
 plt.ylabel("error")
 plt.xlabel("Δt (μs)")
+plt.xlim(min(time_steps), max(time_steps))
 plt.legend()
 
 plt.savefig(args.DATA_DIR.name + ".png", dpi=600, bbox_inches='tight')

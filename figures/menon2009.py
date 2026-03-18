@@ -56,8 +56,6 @@ if args.METHOD.startswith("approx"):
     cmd = ["matexp", "-v", "-v", "-t", str(args.TIME_STEP), "-c", "35"]
     if args.ACCURACY:
         cmd.extend(["-e", str(args.ACCURACY)])
-    else:
-        cmd.extend(["-e", ".001"])
     if args.METHOD.endswith("32"):
         cmd.extend(["-f", "32"])
     cmd.extend(["--input", "v", "-70", "30"])
