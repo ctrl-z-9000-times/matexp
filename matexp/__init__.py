@@ -24,7 +24,8 @@ import time
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
-thread_pool = concurrent.futures.ThreadPoolExecutor()
+_num_threads = len(os.sched_getaffinity(0))
+_thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=_num_threads)
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, float_dtype, target,

@@ -258,7 +258,7 @@ class Optimize2D(Optimizer):
             # Take whichever experiment yielded better results. If they both
             # performed about the same then take both modifications.
             pct_diff = 2 * (A.error - B.error) / (A.error + B.error)
-            thresh   = .25
+            thresh   = .5
             if pct_diff < -thresh:
                 new = A
                 if self.verbose: print(f'Taking increased {self.model.input1.name} bins.\n')
@@ -266,7 +266,7 @@ class Optimize2D(Optimizer):
                 new = B
                 if self.verbose: print(f'Taking increased {self.model.input2.name} bins.\n')
             else:
-                if self.verbose: print('Taking the increases in both dimensions:')
+                if self.verbose: print(f'Taking increased {self.model.input1.name} and {self.model.input2.name} bins.')
                 new = Parameters(self, [increase(cursor.num_buckets1), increase(cursor.num_buckets2)],
                                 polynomial, self.verbose)
             # Check that the error is decreasing monotonically.
@@ -280,16 +280,23 @@ class Optimize2D(Optimizer):
                 else:
                     raise RuntimeError("Failed to reach target accuracy.")
         # Slowly reduce the num_buckets until it fails to meet the target accuracy.
-        decrease = lambda x: x * .90
-        while True:
-            # Try decreasing num_buckets in both dimensions in isolation.
-            if self.verbose: print(f'Decreasing {self.model.input1.name} bins.')
-            A = Parameters(self, [decrease(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
-            if self.verbose: print(f'Decreasing {self.model.input2.name} bins.')
-            B = Parameters(self, [cursor.num_buckets1, decrease(cursor.num_buckets2)], polynomial, self.verbose)
-            new = min(A, B, key=lambda p: p.error)
-            if new.error > self.max_error:
+        decrease = lambda x: max(1, min(x * .95, x - 1))
+        while cursor.error < self.max_error:
+            # Deal with the single-bin edge case.
+            if cursor.num_buckets1 == 1 and cursor.num_buckets2 == 1:
                 break
+            # Try decreasing num_buckets in both dimensions in isolation.
+            A, B = (None, None)
+            if cursor.num_buckets1 > 1:
+                if self.verbose: print(f'Decreasing {self.model.input1.name} bins.')
+                A = Parameters(self, [decrease(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
+            if cursor.num_buckets2 > 1:
+                if self.verbose: print(f'Decreasing {self.model.input2.name} bins.')
+                B = Parameters(self, [cursor.num_buckets1, decrease(cursor.num_buckets2)], polynomial, self.verbose)
+            if A is None:
+                cursor = B
+            elif B is None:
+                cursor = A
             else:
-                cursor = new
+                cursor = min(A, B, key=lambda p: p.error)
         return cursor

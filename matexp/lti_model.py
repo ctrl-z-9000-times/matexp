@@ -33,8 +33,8 @@ class LTI_Model(NMODL_Compiler):
         if time_step is None:
             time_step = self.time_step
         # Break up the input into chunks for multithreading.
-        num_chunks = max(1, num_samples // 1000)
-        num_chunks = 16
+        from . import _num_threads, _thread_pool # Lazy import to avoid circular dependency.
+        num_chunks = _num_threads
         boundaries = [i * num_samples // num_chunks for i in range(num_chunks + 1)]
         input_slices = [slice(*pair) for pair in itertools.pairwise(boundaries)]
         # 
@@ -47,8 +47,7 @@ class LTI_Model(NMODL_Compiler):
                 state[col, :] = 1
                 A[:, :, col] = np.transpose(self.derivative(*chunk_inputs, *state))
             return A * time_step
-        from . import thread_pool # Lazy import to avoid circular dependency.
-        chunk_results = list(thread_pool.map(compute_chunk, input_slices))
+        chunk_results = list(_thread_pool.map(compute_chunk, input_slices))
         # Scipy expm is already multithreaded internally.
         matrices = scipy.linalg.expm(np.concatenate(chunk_results))
         return matrices

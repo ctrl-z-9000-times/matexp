@@ -134,8 +134,8 @@ class Approx:
             approx = np.linalg.matrix_power(approx, power)
             exact  = np.linalg.matrix_power(exact, power)
             return np.max(np.abs(approx - exact))
-        from . import thread_pool # Lazy import to avoid circular dependency.
-        return max(thread_pool.map(process_bucket, self.samples))
+        from . import _thread_pool # Lazy import to avoid circular dependency.
+        return max(_thread_pool.map(process_bucket, self.samples))
 
     def __str__(self):
         s = ''
