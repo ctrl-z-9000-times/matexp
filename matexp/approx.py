@@ -124,18 +124,18 @@ class Approx:
         return self.measure_residual_error()
 
     def measure_residual_error(self):
-        max_abs_error = 0
         self.set_num_buckets()
-        for (bucket_indices, input_values, samples) in self.samples:
-            for input_vector, exact in zip(zip(*input_values), samples):
-                approx = self.approximate_matrix(*input_vector)
-                # Increase the timestep to 1 ms
-                approx = np.linalg.matrix_power(approx, round(1 / self.model.time_step))
-                exact  = np.linalg.matrix_power(exact, round(1 / self.model.time_step))
-                # Find the max-abs-diff between the approx and exact samples.
-                sample_error = np.max(np.abs(approx - exact))
-                max_abs_error = max(max_abs_error, sample_error)
-        return max_abs_error
+        power = round(1 / self.model.time_step)
+        def process_bucket(args):
+            bucket_indices, input_values, exact = args
+            max_abs_error = 0
+            approx = self.approximate_matrix(*np.array(input_values))
+            # Increase the timestep to 1 ms
+            approx = np.linalg.matrix_power(approx, power)
+            exact  = np.linalg.matrix_power(exact, power)
+            return np.max(np.abs(approx - exact))
+        from . import thread_pool # Lazy import to avoid circular dependency.
+        return max(thread_pool.map(process_bucket, self.samples))
 
     def __str__(self):
         s = ''
@@ -194,11 +194,13 @@ class Approx1D(Approx):
         self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def approximate_matrix(self, input1):
+        num_samples = len(input1)
         self.set_num_buckets()
-        bucket_index, bucket_location = self.input1.get_bucket_location(input1)
+        bucket_index, bucket_location = self.input1._get_bucket_location_array(input1)
         basis = np.array([bucket_location ** power for power in range(self.num_terms)])
-        coef  = self.table[bucket_index].reshape(-1, self.num_terms)
-        return coef.dot(basis).reshape(self.num_states, self.num_states)
+        basis = basis.T.reshape(num_samples, 1, 1, self.num_terms)
+        coef  = self.table[bucket_index]
+        return np.sum(coef * basis, axis = -1)
 
 class Approx2D(Approx):
     def __init__(self, samples, polynomial):
@@ -228,11 +230,14 @@ class Approx2D(Approx):
         self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def approximate_matrix(self, input1, input2):
+        assert len(input1.shape) == 1 and input1.shape == input2.shape
+        num_samples = len(input1)
         self.set_num_buckets()
         bucket1_index, bucket1_location = self.input1._get_bucket_location_array(input1)
         bucket2_index, bucket2_location = self.input2._get_bucket_location_array(input2)
-        basis = np.empty(self.num_terms)
+        basis = np.empty([self.num_terms, num_samples])
         for term, (power1, power2) in enumerate(self.polynomial.terms):
             basis[term] = (bucket1_location ** power1) * (bucket2_location ** power2)
-        coef = self.table[bucket1_index, bucket2_index].reshape(-1, self.num_terms)
-        return coef.dot(basis).reshape(self.num_states, self.num_states)
+        basis = basis.T.reshape(num_samples, 1, 1, self.num_terms)
+        coef = self.table[bucket1_index, bucket2_index]
+        return np.sum(coef * basis, axis = -1)

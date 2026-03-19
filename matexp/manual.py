@@ -15,7 +15,7 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
-sim.add_argument('-t', '--time_step', type=float, required=True,
+sim.add_argument('-t', '--time_step', type=float, default=.025,
         help="milliseconds")
 sim.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")
@@ -25,8 +25,8 @@ inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=4, metavar=('NAME', 'MIN', 'MAX', 'BINS'),
         help="input name, bounds, and number of paritions")
-inputs.add_argument('--log', nargs='?', action='append', default=[],
-        metavar='INPUT',
+inputs.add_argument('--log', nargs=2, action='append', default=[],
+        metavar=('INPUT', 'SCALE'),
         help="scale input logarithmically, for chemical concentrations")
 computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
@@ -38,23 +38,22 @@ args = parser.parse_args()
 if   args.float == '32': float_dtype = np.float32
 elif args.float == '64': float_dtype = np.float64
 
-# Gather & organize all information about the inputs.
-inputs = {}
-for (name, minimum, maximum, bins) in args.input:
-    inputs[name] = [LinearInput, (name, minimum, maximum, bins)]
-for name in args.log:
-    if name is None:
-        if len(inputs) == 1:
-            name = next(iter(inputs))
-        else:
-            parser.error(f'Argument "--log" must specify which input it refers to.')
-    elif name not in inputs:
-        parser.error(f'Argument "--log {name}" does not match any input name.')
-    inputs[name][0] = LogarithmicInput
 # Create the input data structures.
-inputs = [input_type(*args) for (input_type, args) in inputs.values()]
+inputs = {}
+log_scales = {name: float(scale) for name, scale in args.log}
+for (name, minimum, maximum, bins) in args.input:
+    if name in log_scales:
+        inputs[name] = inp = LogarithmicInput(name, minimum, maximum)
+        inp.set_num_buckets(bins, log_scales[name])
+    else:
+        inputs[name] = inp = LinearInput(name, minimum, maximum)
+        inp.set_num_buckets(bins)
+# 
+for name in log_scales:
+    if name not in inputs:
+        parser.error(f'Argument "--log {name}" does not match any input name.')
 
-main_manual(args.nmodl_filename, inputs, args.time_step, args.celsius,
+main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.celsius,
         args.polynomial, target=args.target, float_dtype=float_dtype,
         outfile=args.output, verbose=args.verbose)
 

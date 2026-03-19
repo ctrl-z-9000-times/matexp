@@ -12,7 +12,7 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
-sim.add_argument('-t', '--time_step', type=float, required=True,
+sim.add_argument('-t', '--time_step', type=float, default=.025,
         help="milliseconds")
 sim.add_argument('-c', '--celsius', type=float, default=37.0,
         help="default: 37°")

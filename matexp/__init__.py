@@ -17,11 +17,14 @@ from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
 from pathlib import Path
+import concurrent.futures
 import numpy as np
 import os
 import time
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
+
+thread_pool = concurrent.futures.ThreadPoolExecutor()
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, float_dtype, target,

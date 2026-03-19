@@ -1,10 +1,7 @@
 from .nmodl_compiler import NMODL_Compiler
-import concurrent.futures
 import itertools
 import numpy as np
 import scipy.linalg
-
-thread_pool = concurrent.futures.ThreadPoolExecutor()
 
 class LTI_Model(NMODL_Compiler):
     """ Specialization of NMODL_Compiler for Linear & Time-Invariant models. """
@@ -50,6 +47,7 @@ class LTI_Model(NMODL_Compiler):
                 state[col, :] = 1
                 A[:, :, col] = np.transpose(self.derivative(*chunk_inputs, *state))
             return A * time_step
+        from . import thread_pool # Lazy import to avoid circular dependency.
         chunk_results = list(thread_pool.map(compute_chunk, input_slices))
         # Scipy expm is already multithreaded internally.
         matrices = scipy.linalg.expm(np.concatenate(chunk_results))
