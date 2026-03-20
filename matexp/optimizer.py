@@ -241,62 +241,67 @@ class Optimize2D(Optimizer):
 
     def _optimize_num_buckets(self, num_buckets, polynomial, max_runtime=None):
         cursor = Parameters(self, num_buckets, polynomial, self.verbose)
-        # Quickly increase the num_buckets until it exceeds the target accuracy.
-        increase = lambda x: x * 1.50
-        while cursor.error > self.max_error:
-            # Terminate early if it's already slower than max_runtime.
-            if max_runtime is not None and np.prod(cursor.num_buckets) > 1000:
-                cursor.benchmark()
-                if cursor.runtime > max_runtime:
-                    if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}), runs too slow.\n')
-                    return cursor # It's ok to return invalid results BC they won't be used.
-            # Try increasing num_buckets in both dimensions in isolation.
-            if self.verbose: print(f'Increasing {self.model.input1.name} bins:')
-            A = Parameters(self, [increase(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
-            if self.verbose: print(f'Increasing {self.model.input2.name} bins:')
-            B = Parameters(self, [cursor.num_buckets1, increase(cursor.num_buckets2)], polynomial, self.verbose)
-            # Take whichever experiment yielded better results. If they both
-            # performed about the same then take both modifications.
-            pct_diff = 2 * (A.error - B.error) / (A.error + B.error)
-            thresh   = .5
-            if pct_diff < -thresh:
-                new = A
-                if self.verbose: print(f'Taking increased {self.model.input1.name} bins.\n')
-            elif pct_diff > thresh:
-                new = B
-                if self.verbose: print(f'Taking increased {self.model.input2.name} bins.\n')
-            else:
-                if self.verbose: print(f'Taking increased {self.model.input1.name} and {self.model.input2.name} bins.')
-                new = Parameters(self, [increase(cursor.num_buckets1), increase(cursor.num_buckets2)],
-                                polynomial, self.verbose)
-            # Check that the error is decreasing monotonically.
-            if new.error < cursor.error:
-                cursor = new
-            else:
-                # Remake the cursor with more samples and recheck
-                cursor = Parameters(self, cursor.num_buckets, cursor.polynomial, self.verbose)
+        delta = .5
+        for iteration in range(3):
+            # Increase the num_buckets until it exceeds the target accuracy.
+            increase = lambda x: x * (1 + delta)
+            while cursor.error > self.max_error:
+                # Terminate early if it's already slower than max_runtime.
+                if max_runtime is not None and np.prod(cursor.num_buckets) > 1000:
+                    cursor.benchmark()
+                    if cursor.runtime > max_runtime:
+                        if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}), runs too slow.\n')
+                        return cursor # It's ok to return invalid results BC they won't be used.
+                # Try increasing num_buckets in both dimensions in isolation.
+                if self.verbose: print(f'Increasing {self.model.input1.name} bins:')
+                A = Parameters(self, [increase(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
+                if self.verbose: print(f'Increasing {self.model.input2.name} bins:')
+                B = Parameters(self, [cursor.num_buckets1, increase(cursor.num_buckets2)], polynomial, self.verbose)
+                # Take whichever experiment yielded better results. If they both
+                # performed well then take both modifications.
+                A_pct_change = A.error / cursor.error
+                B_pct_change = B.error / cursor.error
+                thresh   = .5
+                if A_pct_change < thresh and B_pct_change < thresh:
+                    if self.verbose: print(f'Taking increased {self.model.input1.name} and {self.model.input2.name} bins.')
+                    new = Parameters(self, [increase(cursor.num_buckets1), increase(cursor.num_buckets2)],
+                                    polynomial, self.verbose)
+                elif A_pct_change < B_pct_change:
+                    if self.verbose: print(f'Taking increased {self.model.input1.name} bins.\n')
+                    new = A
+                else:
+                    if self.verbose: print(f'Taking increased {self.model.input2.name} bins.\n')
+                    new = B
+                # Check that the error is decreasing monotonically.
                 if new.error < cursor.error:
                     cursor = new
                 else:
-                    raise RuntimeError("Failed to reach target accuracy.")
-        # Slowly reduce the num_buckets until it fails to meet the target accuracy.
-        decrease = lambda x: max(1, min(x * .95, x - 1))
-        while cursor.error < self.max_error:
-            # Deal with the single-bin edge case.
-            if cursor.num_buckets1 == 1 and cursor.num_buckets2 == 1:
-                break
-            # Try decreasing num_buckets in both dimensions in isolation.
-            A, B = (None, None)
-            if cursor.num_buckets1 > 1:
-                if self.verbose: print(f'Decreasing {self.model.input1.name} bins.')
-                A = Parameters(self, [decrease(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
-            if cursor.num_buckets2 > 1:
-                if self.verbose: print(f'Decreasing {self.model.input2.name} bins.')
-                B = Parameters(self, [cursor.num_buckets1, decrease(cursor.num_buckets2)], polynomial, self.verbose)
-            if A is None:
-                cursor = B
-            elif B is None:
-                cursor = A
-            else:
-                cursor = min(A, B, key=lambda p: p.error)
+                    # Remake the cursor with more samples and recheck
+                    cursor = Parameters(self, cursor.num_buckets, cursor.polynomial, self.verbose)
+                    if new.error < cursor.error:
+                        cursor = new
+                    else:
+                        raise RuntimeError("Failed to reach target accuracy.")
+            # Reduce the num_buckets until it fails to meet the target accuracy.
+            delta /= 2
+            decrease = lambda x: max(1, min(x * (1 - delta), x - 1))
+            while cursor.error < self.max_error:
+                # Try decreasing num_buckets in both dimensions in isolation.
+                A, B = (None, None)
+                if cursor.num_buckets1 > 1:
+                    if self.verbose: print(f'Decreasing {self.model.input1.name} bins.')
+                    A = Parameters(self, [decrease(cursor.num_buckets1), cursor.num_buckets2], polynomial, self.verbose)
+                if cursor.num_buckets2 > 1:
+                    if self.verbose: print(f'Decreasing {self.model.input2.name} bins.')
+                    B = Parameters(self, [cursor.num_buckets1, decrease(cursor.num_buckets2)], polynomial, self.verbose)
+                # Deal with the single-bin edge cases.
+                if A is None and B is None:
+                    break
+                elif A is None:
+                    cursor = B
+                elif B is None:
+                    cursor = A
+                else:
+                    cursor = min(A, B, key=lambda p: p.error)
+            delta /= 2
         return cursor
