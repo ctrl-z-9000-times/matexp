@@ -6,11 +6,11 @@ exec > >(tee -i ap_log.txt)
 exec 2>&1
 
 time_steps=(
-    .0025
-    .008
+    .001
+    .005
     .025
-    .080
-    .250
+    .050
+    .100
 )
 
 for dt in "${time_steps[@]}"; do
@@ -20,10 +20,10 @@ for dt in "${time_steps[@]}"; do
 done
 
 max_errors=(
-    .0005
-    .005
-    .05
-    .5
+    .0001
+    .001
+    .01
+    .1
 )
 
 for err in "${max_errors[@]}"; do

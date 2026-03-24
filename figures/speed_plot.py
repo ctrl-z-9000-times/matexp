@@ -49,7 +49,7 @@ x = np.arange(len(mechanism_names))
 width = 1 / (len(speed_data) + 1)  # the width of the bars
 multiplier = 0
 
-fig, ax = plt.subplots(layout='constrained')
+fig, ax = plt.subplots(layout='constrained', figsize=(7.5, 7.5))
 
 for index, (method, mech_speed) in enumerate(speed_data):
     offset = width * multiplier

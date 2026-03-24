@@ -84,7 +84,10 @@ n.dt = args.TIME_STEP
 n.secondorder = 1
 n.finitialize()
 
-while n.t < 1000:
+t_stop = 1000 # Do the full run.
+if True: t_stop = 150 # Only do the first AP.
+
+while n.t < t_stop:
     n.fadvance()
 
 traces = (time_trace.as_numpy(),
