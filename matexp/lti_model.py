@@ -21,7 +21,7 @@ class LTI_Model(NMODL_Compiler):
             for s1, s2 in zip(d1, d2):
                 assert abs(s1 - s2 / 2.0) < 1e-12, "Non-linear system detected!"
 
-    def make_matrix(self, inputs, time_step=None):
+    def make_deriv_matrix(self, inputs, time_step=None):
         # Cleanup the arguments.
         inputs = np.array(inputs, dtype=float)
         assert (inputs.ndim == 2) and (inputs.shape[0] == self.num_inputs)
@@ -48,6 +48,10 @@ class LTI_Model(NMODL_Compiler):
                 A[:, :, col] = np.transpose(self.derivative(*chunk_inputs, *state))
             return A * time_step
         chunk_results = list(_thread_pool.map(compute_chunk, input_slices))
-        # Scipy expm is already multithreaded internally.
-        matrices = scipy.linalg.expm(np.concatenate(chunk_results))
+        matrices = np.concatenate(chunk_results)
         return matrices
+
+    def make_matrix(self, inputs, time_step=None):
+        deriv_matrix = self.make_deriv_matrix(inputs, time_step)
+        # Scipy expm is already multithreaded internally.
+        return scipy.linalg.expm(deriv_matrix)

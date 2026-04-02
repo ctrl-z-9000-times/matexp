@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Plot the propagator matrix function
 """
@@ -8,15 +9,20 @@ from pathlib import Path
 from matexp import main, LinearInput, LogarithmicInput
 from matexp.lti_model import LTI_Model
 
-time_step   = 0.1
-temperature = 37
-root_dir    = Path(__file__).parent.parent
-model       = root_dir / "mod" / "NMDA.mod"
-model       = root_dir / "mod" / "Nav11_6state.mod"
+parser = argparse.ArgumentParser()
+parser.add_argument("-q", "--quiet", action="store_true")
+parser.add_argument("--time_step", type=float, default=1)
+parser.add_argument("--temperature", type=float, default=37)
+parser.add_argument("model", type=Path, nargs='?')
+args = parser.parse_args()
+
+if args.model is None:
+    root_dir    = Path(__file__).parent.parent
+    args.model  = root_dir / "mod" / "Nav11_6state.mod"
 v_input     = LinearInput("v", -90, 60)
-g_input     = LogarithmicInput('C', 0, 1e3)
+g_input     = LogarithmicInput('C', 0, 1e2)
 all_inputs  = [v_input, g_input]
-self        = LTI_Model(model, all_inputs, time_step, temperature)
+self        = LTI_Model(args.model, all_inputs, args.time_step, args.temperature)
 # 
 fig = plt.figure(figsize=(7.5, 7.5))
 fig_title = self.name + " Propagator Matrix Function"
@@ -29,8 +35,11 @@ line_params = dict(color='r')
 if self.num_inputs == 1:
     # Sample the inputs.
     input1 = self.inputs[0]
-    input1.set_num_buckets(1)
-    input1 = input1.sample_space(1000)
+    if isinstance(input1, LogarithmicInput):
+        input1.set_num_buckets(1, scale=.0063)
+    else:
+        input1.set_num_buckets(1)
+    input1 = input1.sample_space(10000)
     # Compute the exact propagator matrix.
     exact = self.make_matrix(input1.reshape(1, -1))
     # Setup each subplot.
@@ -55,9 +64,11 @@ if self.num_inputs == 1:
             if isinstance(self.input1, LinearInput):
                 box.plot(input1, exact[:, row_idx, col_idx], **line_params)
             elif isinstance(self.input1, LogarithmicInput):
-                box.semilogx(input1, exact[:, row_idx, col_idx], **line_params)
+                box.plot(self.input1.get_bucket_value(input1), exact[:, row_idx, col_idx], **line_params)
+                # box.semilogx(input1, exact[:, row_idx, col_idx], **line_params)
             # Setup X axis.
-            box.xaxis.set_ticks([-70,0,40])
+            if self.input1.name == "v":
+                box.xaxis.set_ticks([-70,0,40])
             box.xaxis.set_tick_params(direction="in", top=True)
             # Setup Y axis.
             box.set_ybound(-.1, 1.1)
@@ -96,4 +107,4 @@ elif self.num_inputs == 2:
     plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.25, hspace=0.5)
 
 fig.savefig(self.name + ".png", dpi=600, bbox_inches='tight')
-plt.show()
+if not args.quiet: plt.show()

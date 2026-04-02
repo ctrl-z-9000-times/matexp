@@ -7,16 +7,16 @@ exec 2>&1
 
 time_steps=(
     .001
-    .005
+    .0125
     .025
+    .0375
     .050
-    .100
 )
 
 for dt in "${time_steps[@]}"; do
-    python menon2009.py matexp $dt
-    python menon2009.py sparse $dt
-    python menon2009.py approx64 $dt
+    python ap_sim.py matexp $dt
+    python ap_sim.py sparse $dt
+    python ap_sim.py approx32 $dt
 done
 
 max_errors=(
@@ -27,7 +27,7 @@ max_errors=(
 )
 
 for err in "${max_errors[@]}"; do
-    python menon2009.py approx32 .025 $err
+    python ap_sim.py approx64 .025 $err
 done
 
 python ap_plot.py

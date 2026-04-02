@@ -32,13 +32,8 @@ for file in Path('ap_traces').iterdir():
 for method, data in traces.items():
     traces[method] = dict(sorted(data.items(), key=lambda pair: float(pair[0])))
 
-# Select one of the traces.
-for method, data in traces.items():
-    for time_step, (t, v_soma, v_proximal, v_distal) in data.items():
-        data[time_step] = (t, v_soma)
-
 # Setup the figure.
-fig = plt.figure("Menon et al. (2009)", figsize=(7.5, 7.5))
+fig = plt.figure("AP Demo", figsize=(7.5, 7.5))
 gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
 grid = gs.subplots(sharex='all', sharey='all')
 titles = [
@@ -48,7 +43,23 @@ titles = [
     "Approximate Matrix Exponential Method vs Accuracy",]
 methods = ["matexp", "sparse", "approx64", "accuracy"]
 
-t_min, t_max = (125.5, 126.9)
+t_min, t_max = (3, 3.6)
+
+# Offest the time by 100 ms. (stimulus starts after 100 ms delay) 
+for method, data in traces.items():
+    for value, (t, v) in data.items():
+        t -= 100
+
+# Find the exact time of AP peak.
+peak_time = {}
+for method, data in traces.items():
+    peak_time[method] = {}
+    for value, (t, v) in data.items():
+        idx_start = next(i for i, x in enumerate(t) if x >= t_min)
+        idx_stop  = next(i for i, x in enumerate(t) if x >= t_max)
+        idx_peak  = idx_start + np.argmax(v[idx_start:idx_stop+1])
+        peak_time[method][value] = tp = t[idx_peak]
+        print(method, value, tp)
 
 for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     axes = grid[row, col]
@@ -60,8 +71,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     num_traces = len(traces[method])
     for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
         if index in [0, 1, 2]:
-            dt = float(value) / 1000
-            label = "Δt = %g"%dt
+            label = "Δt = %g"%float(value)
         elif index == 3:
             label = f"max error = {value}"
         axes.plot(t, v, label=label)
