@@ -196,7 +196,7 @@ class Optimize1D(Optimizer):
         (num_buckets,) = num_buckets
         cursor = Parameters(self, num_buckets, polynomial, self.verbose)
         min_buckets = 1
-        # Quickly increase the num_buckets until it exceeds the target accuracy.
+        max_buckets = None
         while cursor.error > self.max_error:
             # Terminate early if it's slower than max_runtime.
             if max_runtime is not None: # and cursor.num_buckets1 > 1000:
@@ -204,33 +204,34 @@ class Optimize1D(Optimizer):
                 if cursor.runtime > max_runtime:
                     if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}) runs too slow.\n')
                     return cursor # It's ok to return invalid results BC they won't be used.
-            min_buckets = cursor.num_buckets1
+            # 
+            min_buckets = cursor.num_buckets1 + 1
             # Heuristics to guess new num_buckets.
-            orders_of_magnitude = math.log(cursor.error / self.max_error, 10)
-            pct_incr = max(1.5, 1.7 ** orders_of_magnitude)
-            num_buckets = min(num_buckets * pct_incr, num_buckets + 2000)
-            new = Parameters(self, num_buckets, polynomial, self.verbose)
+            delta = .5
+            increase = lambda x: max(x + 1, x * (1 + delta))
+            new = Parameters(self, increase(cursor.num_buckets1), polynomial, self.verbose)
             # Check that the error is decreasing monotonically.
             if new.error < cursor.error:
                 cursor = new
             else:
-                # Remake the cursor with more samples and recheck
+                # Remake the cursor with more samples and recheck.
                 cursor = Parameters(self, cursor.num_buckets, cursor.polynomial, self.verbose)
                 if new.error < cursor.error:
                     cursor = new
                 else:
-                    raise RuntimeError("Failed to reach target accuracy.")
-        # Slowly reduce the num_buckets until it fails to meet the target accuracy.
-        while True:
-            num_buckets *= 0.9
-            if num_buckets <= min_buckets:
-                break
-            new = Parameters(self, num_buckets, polynomial, self.verbose)
-            if new.error > self.max_error:
-                break
+                    raise RuntimeError("Failed to reach target accuracy (check model stability).")
+        max_buckets = cursor.num_buckets1
+        max_buckets_parameters = cursor
+        # Bisect search the range min_buckets to max_buckets.
+        while min_buckets < max_buckets:
+            midpoint = int((min_buckets + max_buckets) / 2)
+            cursor = Parameters(self, midpoint, polynomial, self.verbose)
+            if cursor.error > self.max_error:
+                min_buckets = cursor.num_buckets1 + 1
             else:
-                cursor = new
-        return cursor
+                max_buckets = cursor.num_buckets1
+                max_buckets_parameters = cursor
+        return max_buckets_parameters
 
 class Optimize2D(Optimizer):
     def init_num_buckets(self):
@@ -244,7 +245,7 @@ class Optimize2D(Optimizer):
         delta = .5
         for iteration in range(3):
             # Increase the num_buckets until it exceeds the target accuracy.
-            increase = lambda x: x * (1 + delta)
+            increase = lambda x: max(x + 1, x * (1 + delta))
             while cursor.error > self.max_error:
                 # Terminate early if it's already slower than max_runtime.
                 if max_runtime is not None and np.prod(cursor.num_buckets) > 1000:
