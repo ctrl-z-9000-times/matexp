@@ -33,7 +33,7 @@ utils.set_solver(out_dir, args.METHOD)
 
 # Run the matexp program if necessary
 if args.METHOD.startswith("approx"):
-    cmd = ["matexp", "-v", "-v", "-t", str(args.TIME_STEP), "-c", "37"]
+    cmd = ["matexp", "-v", "-v", "--dt", str(args.TIME_STEP), "-t", "37"]
     if args.ACCURACY:
         cmd.extend(["-e", str(args.ACCURACY)])
     if args.METHOD.endswith("32"):

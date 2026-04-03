@@ -41,7 +41,7 @@ titles = [
     "Backwards Euler Method",
     "Approximate Matrix Exponential Method vs Time Step",
     "Approximate Matrix Exponential Method vs Accuracy",]
-methods = ["matexp", "sparse", "approx64", "accuracy"]
+methods = ["matexp", "sparse", "approx32", "accuracy"]
 
 t_min, t_max = (3, 3.6)
 
@@ -70,12 +70,14 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
               fontsize="large", weight="bold")
     num_traces = len(traces[method])
     for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
+        assert all(np.isfinite(t))
+        assert all(np.isfinite(v))
         if index in [0, 1, 2]:
             label = "Δt = %g"%float(value)
         elif index == 3:
             label = f"max error = {value}"
-        axes.plot(t, v, label=label)
-        # axes.plot(t, v, label=label, color=cmc.batlow(trace_index / num_traces))
+        # axes.plot(t, v, label=label)
+        axes.plot(t, v, label=label, color=cmc.batlow(trace_index / num_traces))
     # axes.set_yticks([])
     # axes.grid(which="major", axis='both', linestyle='solid', linewidth=1)
     axes.set_xlabel("time (ms)")

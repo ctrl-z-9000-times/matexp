@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser(prog='matexp',
-        description="Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.",)
+        description="Solves Markov models for NEURON mechanisms",)
 parser.add_argument('nmodl_filename',
         metavar='INPUT_PATH',
         help="input path for unsolved NMODL file")
@@ -12,10 +12,10 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
-sim.add_argument('-t', '--time_step', type=float, default=.025,
-        help="milliseconds")
-sim.add_argument('-c', '--celsius', type=float, default=37.0,
-        help="default: 37°")
+sim.add_argument('--dt', '--time_step', type=float, default=.025,
+        help="milliseconds, default: 0.025")
+sim.add_argument('-t', '--temperature', type=float, default=37.0,
+        help="degrees celsius, default: 37")
 sim.add_argument('-e', '--error', type=float, default=1e-3,
         help="maximum absolute error per millisecond. default: 10^-3")
 inputs = parser.add_argument_group('input specification')

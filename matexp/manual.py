@@ -1,12 +1,10 @@
-"""
-Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.
-"""
 from matexp import main_manual, LinearInput, LogarithmicInput
 import argparse
 import numpy as np
 import re
 
-parser = argparse.ArgumentParser(prog='matexp-manual', description=__doc__)
+parser = argparse.ArgumentParser(prog='matexp-manual',
+        description='Solves Markov models for NEURON mechanisms')
 parser.add_argument('nmodl_filename',
         metavar='INPUT_PATH',
         help="path of unsolved NMODL file")
@@ -15,12 +13,12 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
-sim.add_argument('-t', '--time_step', type=float, default=.025,
-        help="milliseconds")
-sim.add_argument('-c', '--celsius', type=float, default=37.0,
-        help="default: 37°")
+sim.add_argument('--dt', '--time_step', type=float, default=.025,
+        help="milliseconds, default: 0.025")
+sim.add_argument('-t', '--temperature', type=float, default=37.0,
+        help="degrees celsius, default: 37")
 sim.add_argument('-p', '--polynomial', type=str, required=True,
-        help="")
+        help="polynomial form, ex: v^2+v+1")
 inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=4, metavar=('NAME', 'MIN', 'MAX', 'BINS'),

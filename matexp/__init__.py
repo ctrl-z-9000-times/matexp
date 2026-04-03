@@ -21,6 +21,9 @@ import concurrent.futures
 import numpy as np
 import os
 import time
+import sys
+
+sys.stdout.reconfigure(line_buffering=True)
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
