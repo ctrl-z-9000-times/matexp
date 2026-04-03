@@ -37,20 +37,20 @@ usage: matexp [-h] [-v] [--plot] -t TIME_STEP [-c CELSIUS] [-e ERROR]
               INPUT_PATH OUTPUT_PATH
 
 positional arguments:
-  INPUT_PATH            input filename for the unsolved NMODL file
-  OUTPUT_PATH           output filename for the solution
+  INPUT_PATH            input path for unsolved NMODL file
+  OUTPUT_PATH           output path for solved NMODL file
 
 options:
   -h, --help            show this help message and exit
   -v, --verbose         print diagnostic information, give twice for trace mode
-  --plot                show the propagator matrix
 
 simulation parameters:
-  -t TIME_STEP, --time_step TIME_STEP
-  -c CELSIUS, --celsius CELSIUS
-                        default: 37°
+  --dt DT, --time_step DT
+                        milliseconds, default: 0.025
+  -t TEMPERATURE, --temperature TEMPERATURE
+                        degrees celsius, default: 37
   -e ERROR, --error ERROR
-                        maximum error per time step. default: 10^-4
+                        maximum absolute error per millisecond. default: 10^-3
 
 input specification:
   -i NAME MIN MAX, --input NAME MIN MAX
