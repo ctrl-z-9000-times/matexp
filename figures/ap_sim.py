@@ -104,7 +104,7 @@ traces = (time_trace.as_numpy(),
          soma_trace.as_numpy())
 
 # Dump the trace to a file
-data_dir = Path(__file__).parent / "ap_traces"
+data_dir = Path(__file__).parent / "ap_data"
 data_file = f"{args.METHOD}_{args.TIME_STEP}"
 if args.ACCURACY:
     data_file += f"_{args.ACCURACY}"

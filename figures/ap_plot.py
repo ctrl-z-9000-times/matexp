@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Plot the data in "ap_traces/"
+Plot the data in "ap_data/"
 """
 
 from pathlib import Path
@@ -18,7 +18,7 @@ traces = {
 }
 
 # Load the AP trace data.
-for file in Path('ap_traces').iterdir():
+for file in Path('ap_data').iterdir():
     with open(file, 'rb') as f:
         data = pickle.load(f)
     if file.name.count("_") == 1:
