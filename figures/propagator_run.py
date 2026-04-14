@@ -10,9 +10,12 @@ mod_files = figure_dir.glob("../mod/*.mod")
 out_dir = figure_dir / "propagator_out"
 out_dir.mkdir(exist_ok=True)
 cwd = Path.cwd()
+print("OUT DIR:", out_dir)
 os.chdir(out_dir)
 
 for file in mod_files:
-	run([program, "-q", "--time_step", ".100", file])
+	cmd = [program, "-q", "--time_step", ".100", file]
+	print(' '.join(str(x) for x in cmd))
+	run(cmd, check=True)
 
 os.chdir(cwd)

@@ -6,19 +6,21 @@ from matexp.lti_model import LTI_Model
 from matexp.optimizer import Optimizer
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
+root_dir = Path(__file__).parent.parent
 
 # Experimental setup.
 min_scale   = 1e-9
-num_scales  = 50
+num_scales  = 100
 error_arg   = 0.001 # Unused by this experiment.
-time_step   = 0.1
+time_step   = 0.100
 temperature = 37
 verbose     = 2
 v_input     = LinearInput("v", -100, 100)
 g_input     = LogarithmicInput('C', 0, 1e3)
 all_inputs  = [v_input, g_input]
-model_file  = "mod/src/ampa13.mod"
-# model_file  = "mod/src/NMDA.mod"
+model_file  = root_dir / "mod/AMPA_13state.mod"
+# model_file  = root_dir / "mod/NMDA_10state.mod"
 
 # 
 model = LTI_Model(model_file, all_inputs, time_step, temperature)
