@@ -2,17 +2,24 @@
 set -ex
 cd $HOME
 
+# Redirect stdout and stderr to a log file.
+exec > >(tee -i install_log.txt)
+exec 2>&1
+
 # Install prerequisite software
-echo password | sudo -S apt-get update && apt-get install -y \
+echo password | sudo -S apt-get update
+echo password | sudo -S apt-get install -y \
 	python-is-python3 python-dev-is-python3 \
-	git cmake bison flex python3-dev libreadline-dev libx11-dev libxcomposite-dev
+	git cmake bison flex python3-dev  \
+	libx11-dev libxcomposite-dev libncurses-dev libreadline-dev \
+	libopenmpi-dev openmpi-bin
 
 # Download the github repo's
 git clone https://github.com/ctrl-z-9000-times/nrn.git
 git clone https://github.com/ctrl-z-9000-times/matexp.git
 
 # Download the PyPI dependencies.
-pip install --upgrade pip setuptools wheel
+echo password | sudo -S pip install --upgrade pip setuptools wheel
 # pip install --user -r nrn/nrn_requirements.txt
 
 # Build NEURON (with nrnbuild.py)

@@ -13,18 +13,8 @@ SEED=$RANDOM
 
 python benchmark.py "err_data/matexp_1.0" $SEED matexp 1.0 $CELLS dedup
 
-for dt in "(
-    0.001
-    0.002
-    0.005
-    0.01
-    0.02
-    0.05
-    0.1
-    0.2
-    0.5
-    1.0
-)"; do
+for dt in 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5 1.0
+do
     python benchmark.py "err_data/sparse_$dt" $SEED sparse $dt $CELLS dedup
     python benchmark.py "err_data/approx32a_$dt" $SEED approx32 $dt $CELLS dedup
     python benchmark.py "err_data/approx32b_$dt" $SEED approx32 $dt $CELLS dedup --error 1e-8
