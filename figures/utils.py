@@ -75,7 +75,7 @@ def load(mod_files, method, dt=None, c=None, error=None):
         presyn = in_dir.joinpath("presyn.mod")
         if presyn.exists():
             presyn.rename(out_dir.joinpath("presyn.mod"))
-        cmd = ["matexp", "-v", "-v", "--dt", str(dt), "-t", str(c)]
+        cmd = ["matexp", "-v", "-v", "-dt", str(dt), "-t", str(c)]
         if error:
             cmd.extend(["-e", str(error)])
         if method.endswith("32"):

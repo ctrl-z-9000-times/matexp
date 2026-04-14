@@ -12,7 +12,7 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
-sim.add_argument('--dt', '--time_step', type=float, default=.025,
+sim.add_argument('-dt', '--time_step', type=float, default=.025,
         help="milliseconds, default: 0.025")
 sim.add_argument('-t', '--temperature', type=float, default=37.0,
         help="degrees celsius, default: 37")
@@ -51,7 +51,7 @@ for name in args.log:
 # Create the input data structures.
 inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
-main(args.nmodl_filename, inputs, args.time_step, args.celsius,
+main(args.nmodl_filename, inputs, args.time_step, args.temperature,
      error=args.error, target=args.target, float_dtype=float_dtype,
      outfile=args.output, verbose=args.verbose)
 

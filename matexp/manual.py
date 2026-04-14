@@ -13,7 +13,7 @@ parser.add_argument('output', type=str, metavar='OUTPUT_PATH',
 parser.add_argument('-v', '--verbose', action='count', default=0,
         help="print diagnostic information, give twice for trace mode")
 sim = parser.add_argument_group('simulation parameters')
-sim.add_argument('--dt', '--time_step', type=float, default=.025,
+sim.add_argument('-dt', '--time_step', type=float, default=.025,
         help="milliseconds, default: 0.025")
 sim.add_argument('-t', '--temperature', type=float, default=37.0,
         help="degrees celsius, default: 37")
@@ -51,7 +51,7 @@ for name in log_scales:
     if name not in inputs:
         parser.error(f'Argument "--log {name}" does not match any input name.')
 
-main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.celsius,
+main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.temperature,
         args.polynomial, target=args.target, float_dtype=float_dtype,
         outfile=args.output, verbose=args.verbose)
 
