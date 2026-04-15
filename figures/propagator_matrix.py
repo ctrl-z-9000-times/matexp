@@ -5,12 +5,12 @@ Plot the propagator matrix function
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from pathlib import Path
 from matexp import main, LinearInput, LogarithmicInput
 from matexp.lti_model import LTI_Model
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-q", "--quiet", action="store_true")
 parser.add_argument("--time_step", type=float, default=1)
 parser.add_argument("--temperature", type=float, default=37)
 parser.add_argument("model", type=Path, nargs='?')
@@ -107,4 +107,4 @@ elif self.num_inputs == 2:
     plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.25, hspace=0.5)
 
 fig.savefig(self.name + ".png", dpi=600, bbox_inches='tight')
-if not args.quiet: plt.show()
+if not os.environ['NOSHOW']: plt.show()

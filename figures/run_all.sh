@@ -5,9 +5,13 @@ set -ex
 exec > >(tee -i run_log.txt)
 exec 2>&1
 
+export NOSHOW=1
+
 lscpu
 lspci
-nvidia-smi
+if [ -x "$(command -v nvidia-smi)" ]; then
+	nvidia-smi
+fi
 
 python propagator_run.py
 

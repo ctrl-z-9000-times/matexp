@@ -20,6 +20,7 @@ import csv
 import matexp
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 def speed_vs_accuracy(file, time_step=0.1, temperature=37.0):
     # samples = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10]
@@ -65,7 +66,7 @@ def plot(files):
     plt.xlabel('Error Parameter')
     plt.ylim(bottom=0.0)
     plt.legend()
-    plt.show()
+    if not os.environ['NOSHOW']: plt.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)

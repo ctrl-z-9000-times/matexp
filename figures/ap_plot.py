@@ -4,6 +4,7 @@ Plot the data in "ap_data/"
 """
 
 from pathlib import Path
+import os
 import cmcrameri.cm as cmc
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,4 +86,4 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     axes.legend()
 
 fig.savefig("ap_demo.png", dpi=600, bbox_inches='tight')
-plt.show()
+if not os.environ['NOSHOW']: plt.show()

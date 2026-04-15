@@ -20,6 +20,7 @@ git clone https://github.com/ctrl-z-9000-times/matexp.git
 
 # Download the PyPI dependencies.
 echo password | sudo -S pip install --upgrade pip setuptools wheel
+pip install matplotlib
 # pip install --user -r nrn/nrn_requirements.txt
 
 # Build NEURON (with nrnbuild.py)

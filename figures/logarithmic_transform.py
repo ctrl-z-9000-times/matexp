@@ -4,6 +4,7 @@ Experiment with the logarithmic transform and its offset parameter.
 from matexp import LinearInput, LogarithmicInput
 from matexp.lti_model import LTI_Model
 from matexp.optimizer import Optimizer
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
@@ -25,29 +26,30 @@ model_file  = root_dir / "mod/AMPA_13state.mod"
 # 
 model = LTI_Model(model_file, all_inputs, time_step, temperature)
 optimizer = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
-plt.figure("Log Transform")
-plt.suptitle(f"Logarithmic Transform Analysis for {model.name}")
+fig = plt.figure(f"Log Offset {model.name}", figsize=(7.5, 4))
+gs = fig.add_gridspec(1, 2, hspace=0, wspace=0)
+grid = gs.subplots(sharey='all')
 
 if True:
-    plt.subplot(1, 2, 1)
+    axes = grid[0]
     num_buckets = [20]
     for polynomial in (5, 4, 3, 2, 1, 0):
         scales, errors = optimizer._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
-        plt.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none', label=f'{polynomial} degree polynomial')
-    plt.title(f"Error vs Polynomial\n{num_buckets[0]} input partitions")
-    plt.xlabel("ϵ, the logarithmic offset")
-    plt.ylabel("RMS of residual error")
-    plt.legend()
+        axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none', label=f'{polynomial} degree polynomial')
+    axes.set_title(f"Error vs Polynomial\n{num_buckets[0]} input partitions")
+    axes.set_xlabel("ϵ, the logarithmic offset")
+    axes.set_ylabel("RMS of residual error")
+    axes.legend()
 
 if True:
-    plt.subplot(1, 2, 2)
+    axes = grid[1]
     polynomial = 3
     for num_buckets in ([160], [80], [40], [20], [10], [5]):
         scales, errors = optimizer._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
-        plt.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none', label=f'{num_buckets[0]} input partitions')
-    plt.title(f"Error vs Partitions\n{polynomial} degree polynomial")
-    plt.xlabel("ϵ, the logarithmic offset")
-    plt.ylabel("RMS of residual error")
-    plt.legend()
+        axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none', label=f'{num_buckets[0]} input partitions')
+    axes.set_title(f"Error vs Partitions\n{polynomial} degree polynomial")
+    axes.set_xlabel("ϵ, the logarithmic offset")
+    axes.legend()
 
-plt.show()
+fig.savefig("log_offset.png", dpi=600, bbox_inches='tight')
+if not os.environ['NOSHOW']: plt.show()

@@ -13,9 +13,12 @@ cwd = Path.cwd()
 print("OUT DIR:", out_dir)
 os.chdir(out_dir)
 
+env = dict(os.environ)
+env['NOSHOW'] = '1'
+
 for file in mod_files:
-	cmd = [program, "-q", "--time_step", ".100", file]
+	cmd = [program, "--time_step", ".100", file]
 	print(' '.join(str(x) for x in cmd))
-	run(cmd, check=True)
+	run(cmd, env=env, check=True)
 
 os.chdir(cwd)

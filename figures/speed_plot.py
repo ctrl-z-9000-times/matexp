@@ -3,6 +3,7 @@
 Make a bar chart of speed measurements
 """
 from pathlib import Path
+import os
 import argparse
 import cmcrameri.cm as cmc
 import matplotlib.pyplot as plt
@@ -65,4 +66,4 @@ ax.set_yscale("log")
 # ax.set_ylim(0, 250)
 ax.legend()
 plt.savefig("speed_plot.png", dpi=600, bbox_inches='tight')
-plt.show()
+if not os.environ['NOSHOW']: plt.show()

@@ -7,6 +7,7 @@ from pathlib import Path
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pickle
 
 parser = argparse.ArgumentParser()
@@ -98,4 +99,4 @@ plt.xlim(min(time_steps), max(time_steps))
 plt.legend()
 
 plt.savefig(args.DATA_DIR.name + ".png", dpi=600, bbox_inches='tight')
-plt.show()
+if not os.environ['NOSHOW']: plt.show()
