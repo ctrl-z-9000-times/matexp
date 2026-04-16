@@ -5,6 +5,8 @@ from matexp import LinearInput, LogarithmicInput
 from matexp.lti_model import LTI_Model
 from matexp.optimizer import Optimizer
 import os
+import sys
+sys.stdout.reconfigure(line_buffering=True)
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path

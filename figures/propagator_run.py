@@ -3,6 +3,9 @@
 from pathlib import Path
 from subprocess import run
 import os
+import sys
+
+sys.stdout.reconfigure(line_buffering=True)
 
 figure_dir = Path(__file__).parent 
 program = figure_dir / "propagator_matrix.py"

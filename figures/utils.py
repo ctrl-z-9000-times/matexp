@@ -2,10 +2,13 @@ from pathlib import Path
 import glob
 import importlib
 import os
+import sys
 import re
 import shutil
 import subprocess
 import tempfile
+
+sys.stdout.reconfigure(line_buffering=True)
 
 def get_solver(nmodl_text):
     for match in re.finditer(r"\sMETHOD\s+(\w+)\b", nmodl_text):

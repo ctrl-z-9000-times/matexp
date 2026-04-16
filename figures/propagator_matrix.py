@@ -6,9 +6,12 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
 from pathlib import Path
 from matexp import main, LinearInput, LogarithmicInput
 from matexp.lti_model import LTI_Model
+
+sys.stdout.reconfigure(line_buffering=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--time_step", type=float, default=1)

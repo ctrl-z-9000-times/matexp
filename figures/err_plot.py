@@ -7,8 +7,11 @@ from pathlib import Path
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pickle
+import os
+
+import sys
+sys.stdout.reconfigure(line_buffering=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("DATA_DIR", type=Path)
