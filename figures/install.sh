@@ -6,6 +6,8 @@ cd $HOME
 exec > >(tee -i install_log.txt)
 exec 2>&1
 
+export PATH=$PATH:/home/user/.local/bin
+
 # Install prerequisite software
 echo password | sudo -S apt-get update
 echo password | sudo -S apt-get install -y \

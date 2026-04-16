@@ -14,8 +14,13 @@ time_steps=(
 )
 
 for dt in "${time_steps[@]}"; do
-    python ap_sim.py matexp $dt
-    python ap_sim.py sparse $dt
+    python ap_sim.py matexp $dt &
+    python ap_sim.py sparse $dt &
+done
+
+wait -f $(jobs -p)
+
+for dt in "${time_steps[@]}"; do
     python ap_sim.py approx32 $dt
 done
 
