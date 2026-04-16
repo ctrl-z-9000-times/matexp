@@ -2,7 +2,7 @@ __pycache__/
 *.egg-info
 *.csv
 x86_64/
-*.log
+*_log.txt
 *.png
+*_data/
 MenonEtAl2009/
-f32_data

@@ -99,4 +99,4 @@ plt.xlim(min(time_steps), max(time_steps))
 plt.legend()
 
 plt.savefig(args.DATA_DIR.name + ".png", dpi=600, bbox_inches='tight')
-if not os.environ['NOSHOW']: plt.show()
+if not os.environ.get('NOSHOW', ''): plt.show()

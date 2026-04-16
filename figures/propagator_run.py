@@ -6,7 +6,10 @@ import os
 
 figure_dir = Path(__file__).parent 
 program = figure_dir / "propagator_matrix.py"
-mod_files = figure_dir.glob("../mod/*.mod")
+if os.environ.get("RUNFAST", ""):
+	mod_files = [figure_dir / "../mod/Nav11_6state.mod"]
+else:
+	mod_files = figure_dir.glob("../mod/*.mod")
 out_dir = figure_dir / "propagator_out"
 out_dir.mkdir(exist_ok=True)
 cwd = Path.cwd()

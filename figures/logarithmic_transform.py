@@ -13,6 +13,8 @@ root_dir = Path(__file__).parent.parent
 # Experimental setup.
 min_scale   = 1e-9
 num_scales  = 100
+if os.environ.get('RUNFAST', ''):
+    num_scales  = 5
 error_arg   = 0.001 # Unused by this experiment.
 time_step   = 0.100
 temperature = 37
@@ -52,4 +54,4 @@ if True:
     axes.legend()
 
 fig.savefig("log_offset.png", dpi=600, bbox_inches='tight')
-if not os.environ['NOSHOW']: plt.show()
+if not os.environ.get('NOSHOW', ''): plt.show()
