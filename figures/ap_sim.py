@@ -33,13 +33,14 @@ utils.set_solver(out_dir, args.METHOD)
 
 # Run the matexp program if necessary
 if args.METHOD.startswith("approx"):
-    cmd = ["matexp", "-v", "-v", "--dt", str(args.TIME_STEP), "-t", "37"]
+    cmd = ["matexp", "-v", "-v", "--time_step", str(args.TIME_STEP), "--temperature", "37"]
     if args.ACCURACY:
         cmd.extend(["-e", str(args.ACCURACY)])
     if args.METHOD.endswith("32"):
         cmd.extend(["-f", "32"])
     cmd.extend(["--input", "v", "-70", "40"])
     for in_path in mod_files:
+        print("RUN CMD: ", ' '.join(str(x) for x in cmd))
         subprocess.run(cmd + [in_path, out_dir], check=True)
 
 # from neuron import n
