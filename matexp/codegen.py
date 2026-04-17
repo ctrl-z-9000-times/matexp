@@ -110,7 +110,7 @@ class Codegen:
               f"    const real* __restrict__ tbl_ptr = {self.name}_table;\n"
                "    // Locate the input within the look-up table.\n")
         for idx in range(len(self.inputs)):
-            c += f"real input{idx} = (real) input{idx}_f64;\n"
+            c += f"    real input{idx} = (real) input{idx}_f64;\n"
         for idx, inp in enumerate(self.inputs):
             if isinstance(inp, LinearInput):
                 c += f"    input{idx} = (input{idx} - {inp.minimum}) * {inp.bucket_frq};\n"
@@ -158,7 +158,8 @@ class Codegen:
                 terms.append("(*tbl_ptr++)")
         polynomial = ' + '.join(terms)
         if not init:
-            c += (f"    real scratch[{self.num_states}] = {{0.0}};\n"
+            zeros = ', '.join(['0.0'] * self.num_states)
+            c += (f"    real scratch[{self.num_states}] = {{{zeros}}};\n"
                   f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
                    "        const real s = (real) *state[col];\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"

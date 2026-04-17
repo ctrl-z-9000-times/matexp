@@ -6,10 +6,11 @@ cd $HOME
 exec > >(tee -i install_log.txt)
 exec 2>&1
 
-export PATH=$PATH:/home/user/.local/bin
+export PATH=$PATH:$HOME/.local/bin
 
 # Install prerequisite software
 echo password | sudo -S apt-get update
+# echo password | sudo -S apt-get upgrade -y
 echo password | sudo -S apt-get install -y \
 	python-is-python3 python-dev-is-python3 \
 	git cmake bison flex python3-dev  \

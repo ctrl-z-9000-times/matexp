@@ -17,7 +17,7 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument("OUT_FILE", type=Path)
 parser.add_argument("SEED", type=int, default=None)
-parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64", "sparse"])
+parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64", "sparse", "pwd"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
 parser.add_argument("--error", type=float, default=1e-3)
@@ -30,7 +30,10 @@ if args.MODELS == "all":
     mod_files = utils.all_mod_files()
 elif args.MODELS == "dedup":
     mod_files = utils.dedup_mod_files()
-neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, error=args.error)
+if args.METHOD == "pwd":
+    import neuron
+else:
+    neuron = utils.load(mod_files, args.METHOD, dt=args.TIME_STEP, c=37, error=args.error)
 mechanisms = utils.mechanism_names(mod_files) # This function depends on neuron being loaded first
 n = neuron.n
 from neuron.units import ms, mV, µm
