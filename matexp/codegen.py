@@ -35,6 +35,7 @@ class Codegen:
                 self._make_kernel())
 
     def _preamble(self):
+        partitions = '   '.join(f"{inp.name} / {inp.num_buckets}" for inp in self.inputs)
         c = (f"/{'*'*69}\n"
              f"Model Name   : {self.name}\n"
              f"Filename     : {self.model.nmodl_filename}\n"
@@ -44,6 +45,7 @@ class Codegen:
              f"Max Error    : {getattr(self.model, 'target_error', None)}\n"
              f"Target       : {self.float_dtype.__name__} {self.target}\n"
              f"Polynomial   : {self.polynomial}\n"
+             f"Partitions   : {partitions}"
              f"{'*'*69}/\n\n")
         if self.target == 'host':
             if any(isinstance(inp, LogarithmicInput) for inp in self.inputs):
@@ -300,7 +302,6 @@ class Codegen:
         states = ", ".join(f'&({x})' for x in self.state_names)
 
         solver_impl = f"\n\nVERBATIM\n\n{self.source_code}\n\nENDVERBATIM\n\n"
-        solve_breakpoint = f"SOLVE solve_{self.name}_matexp"
         solve_procedure = (
             f"PROCEDURE solve_{self.name}_matexp() {{\n"
              "  VERBATIM\n"
@@ -308,6 +309,7 @@ class Codegen:
             f"    {self.name}_kernel({inputs}, state);\n"
              "  ENDVERBATIM\n"
              "}\n\n")
+        solve_breakpoint = f"SOLVE solve_{self.name}_matexp"
         solve_initial = (
              "VERBATIM\n"
             f"    assert(dt == {self.model.time_step});\n"
@@ -320,9 +322,7 @@ class Codegen:
             nmodl_text = f.read()
 
         # Find the end of the NEURON block and insert the new solver right after it.
-        nmodl_text = re.sub(r"NEURON[^}]+}",
-                lambda x: x.group(0) + solver_impl + solve_procedure,
-                nmodl_text)
+        nmodl_text = solver_impl + solve_procedure + nmodl_text
         # Replace the SOLVE statements.
         initial_regex = r"\bSOLVE\s+\w+\s+STEADYSTATE\s+(sparse|matexp)\b"
         breakpoint_regex = r"\bSOLVE\s+\w+\s+METHOD\s+(sparse|matexp)\b"

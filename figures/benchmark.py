@@ -84,7 +84,9 @@ for cell_idx in range(args.CELLS):
 point_processes = {}
 pproc_instances = {}
 for m_name, states in mechanisms.items():
-    m_class = getattr(n, m_name)
+    m_class = getattr(n, m_name, None)
+    if m_class is None:
+        continue
     pproc = isinstance(m_class, hoc.HocObject) # Determine if point process or distributed mechanism
     if pproc:
         point_processes[m_name] = states
