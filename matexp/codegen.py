@@ -45,7 +45,7 @@ class Codegen:
              f"Max Error    : {getattr(self.model, 'target_error', None)}\n"
              f"Target       : {self.float_dtype.__name__} {self.target}\n"
              f"Polynomial   : {self.polynomial}\n"
-             f"Partitions   : {partitions}"
+             f"Partitions   : {partitions}\n"
              f"{'*'*69}/\n\n")
         if self.target == 'host':
             if any(isinstance(inp, LogarithmicInput) for inp in self.inputs):
@@ -311,7 +311,7 @@ class Codegen:
              "}\n\n")
         solve_breakpoint = f"SOLVE solve_{self.name}_matexp"
         solve_initial = (
-             "VERBATIM\n"
+             "\nVERBATIM\n"
             f"    assert(dt == {self.model.time_step});\n"
             f"    assert(celsius == {self.model.temperature});\n"
             f"    double* state[{self.num_states}] = {{{states}}};\n"
