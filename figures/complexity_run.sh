@@ -5,7 +5,6 @@ set -ex
 exec > >(tee -i complexity_log.txt)
 exec 2>&1
 
-# rm -rf complexity_data
 mkdir -p complexity_data
 
 MOD_DIR=../mod

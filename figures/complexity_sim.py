@@ -16,11 +16,13 @@ def speed_vs_accuracy(file, errors, time_step=0.025, temperature=37.0):
     output = Path("complexity_data").joinpath(Path(file).name).with_suffix(".csv")
     if not output.exists():
         with open(output, 'wt') as f:
-            f.write("error,speed\n")
+            f.write("error,speed,size\n")
     for error in errors:
-        speed = measure_speed(build_approximation(file, time_step, temperature, error))
+        approx = build_approximation(file, time_step, temperature, error)
+        speed = measure_speed(approx)
+        size = table_size(approx)
         with open(output, 'at') as f:
-            f.write(f"{error},{speed}\n")
+            f.write(f"{error},{speed},{size}\n")
 
 def build_approximation(file, time_step, temperature, error):
     voltage_input = matexp.LinearInput('v', -100, 100)
@@ -35,6 +37,9 @@ def measure_speed(parameters):
     num_states = parameters.model.num_states
     return matexp._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
                                   float_dtype = np.float64, target = 'host')
+
+def table_size(parameters):
+    return parameters.approx.table.nbytes
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('FILE', type=Path)

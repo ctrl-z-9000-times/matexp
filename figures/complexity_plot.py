@@ -10,16 +10,20 @@ import os
 
 plt.figure('Speed vs Accuracy', figsize=(7.5, 7.5))
 
+min_table_size = np.inf
+
 for file in Path("complexity_data").glob("*.csv"):
     name = file.stem
     data = []
     with open(file, 'rt') as f:
         for row in csv.DictReader(f):
-            data.append((float(row["error"]), float(row["speed"])))
+            data.append((float(row["error"]), float(row["speed"]), float(row["size"])))
     data.sort()
-    error, speed = zip(*data)
-
+    error, speed, size = zip(*data)
     plt.semilogx(error, speed, marker='o', label=name)
+    
+    min_table_size = min(min_table_size, min(size))
+print("Smallest table in dataset:", min_table_size, "bytes")
 
 plt.title('Speed vs Accuracy')
 plt.ylabel('Time to Integrate, per Instance per Time Step\nNanoseconds')
