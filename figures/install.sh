@@ -7,6 +7,7 @@ exec > >(tee -i install_log.txt)
 exec 2>&1
 
 export PATH=$PATH:$HOME/.local/bin
+echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
 
 # Install prerequisite software
 echo password | sudo -S apt-get update
@@ -25,45 +26,36 @@ git clone https://github.com/LLNL/Caliper.git
 
 # Download the PyPI dependencies.
 echo password | sudo -S pip install --upgrade pip setuptools wheel
-pip install matplotlib
+pip install matplotlib pytest find-libpython
 # pip install --user -r nrn/nrn_requirements.txt
-
-# Build Caliper (the profiling library)
-cd $HOME/Caliper
-mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/.local/
-make && make install
-
-# Build NEURON (with nrnbuild.py)
-mkdir nrn/build
-cd nrn
-git checkout nrnbuild
-cd build
-cmake .. \
-	-DPYTHON_EXECUTABLE=$(which python3) \
-	-DCMAKE_INSTALL_PREFIX=$HOME/.local/ \
-	-DCMAKE_BUILD_TYPE=Release \
-	-DNRN_ENABLE_RX3D=OFF \
-	-DNRN_ENABLE_MPI=OFF \
-	-DNRN_ENABLE_CORENEURON=ON \
-	-DNMODL_ENABLE_PYTHON_BINDINGS=ON \
-	-DNRN_ENABLE_TESTS=OFF
-cmake --build . --parallel --target install
-
-# Build NEURON
-git checkout matexp3
-cmake .. \
-	-DPYTHON_EXECUTABLE=$(which python3) \
-	-DCMAKE_INSTALL_PREFIX=$HOME/.local/ \
-	-DCMAKE_BUILD_TYPE=Release \
-	-DNRN_ENABLE_RX3D=OFF \
-	-DNRN_ENABLE_MPI=OFF \
-	-DNRN_ENABLE_CORENEURON=ON \
-	-DNMODL_ENABLE_PYTHON_BINDINGS=ON \
-	-DNRN_ENABLE_TESTS=OFF \
-	-DNRN_ENABLE_PROFILING=ON -DNRN_PROFILER=caliper
-cmake --build . --parallel --target install
 
 # Install the matexp program from source
 cd $HOME/matexp
 pip install --user --editable .
+
+# Build Caliper (the profiling library)
+cd $HOME/Caliper
+mkdir install
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/Caliper/install/
+make && make install
+
+# Build NEURON (with nrnbuild.py)
+cd $HOME/nrn
+mkdir build && cd build
+git checkout nrnbuild
+cmake .. \
+	-DPYTHON_EXECUTABLE=$(which python3) \
+	-DCMAKE_INSTALL_PREFIX=$HOME/.local/ \
+	-DNRN_INSTALL_PYTHON_PREFIX=lib/python3.10/site-packages/neuron/ \
+	-DNRN_ENABLE_RX3D=OFF \
+	-DNRN_ENABLE_MPI=OFF \
+	-DNRN_ENABLE_CORENEURON=ON \
+	-DNMODL_ENABLE_PYTHON_BINDINGS=ON \
+	-DNRN_ENABLE_TESTS=ON  -DCORENRN_ENABLE_UNIT_TESTS=ON \
+	-DNRN_ENABLE_PROFILING=ON -DCORENRN_ENABLE_CALIPER_PROFILING=ON -DNRN_PROFILER=caliper \
+	-DCMAKE_PREFIX_PATH=$HOME/Caliper/install/share/cmake/caliper/
+cmake --build . --parallel --target install
+nrnbuild.py --help
+
+echo "INSTALL COMPLETE"

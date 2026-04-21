@@ -5,7 +5,6 @@ set -ex
 exec > >(tee -i run_log.txt)
 exec 2>&1
 
-export PATH=$PATH:$HOME/.local/bin
 export NOSHOW=1
 
 echo "RUNFAST DEBUG MODE FLAG: $RUNFAST"
@@ -32,6 +31,7 @@ python speed_vs_accuracy.py
 
 # Gather up the results
 mkdir results
+mv $HOME/install_log.txt results/
 mv ./*.png results/
 mv ./*_log.txt results/
 mv ./*_data results/
