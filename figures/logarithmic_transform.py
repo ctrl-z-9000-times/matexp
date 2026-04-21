@@ -14,15 +14,15 @@ root_dir = Path(__file__).parent.parent
 
 # Experimental setup.
 min_scale   = 1e-9
-num_scales  = 100
+num_scales  = 50
 if os.environ.get('RUNFAST', ''):
     num_scales  = 5
 error_arg   = 0.001 # Unused by this experiment.
-time_step   = 0.100
+time_step   = 0.025
 temperature = 37
 verbose     = 2
 v_input     = LinearInput("v", -100, 100)
-g_input     = LogarithmicInput('C', 0, 1e3)
+g_input     = LogarithmicInput('C', 0, 10)
 all_inputs  = [v_input, g_input]
 model_file  = root_dir / "mod/AMPA_13state.mod"
 # model_file  = root_dir / "mod/NMDA_10state.mod"

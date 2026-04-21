@@ -29,4 +29,4 @@ plt.legend()
 
 plt.savefig("complexity.png", dpi=600, bbox_inches='tight')
 
-if not os.environ['NOSHOW']: plt.show()
+if not os.environ.get('NOSHOW', ''): plt.show()

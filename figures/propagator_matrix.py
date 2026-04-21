@@ -110,4 +110,4 @@ elif self.num_inputs == 2:
     plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.25, hspace=0.5)
 
 fig.savefig(self.name + ".png", dpi=600, bbox_inches='tight')
-if not os.environ['NOSHOW']: plt.show()
+if not os.environ.get('NOSHOW', ''): plt.show()

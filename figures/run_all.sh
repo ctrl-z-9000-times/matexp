@@ -27,7 +27,7 @@ bash speed_run.sh
 
 bash gpu_run.sh
 
-python speed_vs_accuracy.py
+bash complexity_run.sh
 
 # Gather up the results
 mkdir results

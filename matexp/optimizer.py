@@ -103,7 +103,7 @@ class Optimizer:
         if not any(isinstance(inp, LogarithmicInput) for inp in self.model.inputs):
             return
         if self.verbose: print('Optimizing logarithmic scale ...')
-        scales, errors = self._eval_log_scale(num_buckets, polynomial, 1e-9, 100)
+        scales, errors = self._eval_log_scale(num_buckets, polynomial, 1e-9, 50)
         # Use the global minima of RMSE.
         argmin     = np.argmin(errors)
         min_error  = errors[argmin]
