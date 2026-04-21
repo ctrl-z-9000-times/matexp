@@ -89,7 +89,7 @@ def load(mod_files, method, dt=None, c=None, error=None):
         for in_path in in_dir.iterdir():
             subprocess.run(cmd + [in_path, out_dir], check=True)
     # Compile the NMODL files
-    return build_models(out_dir, method in ["matexp"])
+    return build_models(out_dir, method in ["matexp", "approx32", "approx64"])
 
 def build_models(mod_dir, nmodl):
     cwd = os.getcwd()
