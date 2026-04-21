@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Experiment with the logarithmic transform and its offset parameter.
 """
@@ -24,21 +25,26 @@ verbose     = 2
 v_input     = LinearInput("v", -100, 100)
 g_input     = LogarithmicInput('C', 0, 10)
 all_inputs  = [v_input, g_input]
-model_file  = root_dir / "mod/AMPA_13state.mod"
-# model_file  = root_dir / "mod/NMDA_10state.mod"
 
-# 
+# AMPA
+model_file  = root_dir / "mod/AMPA_13state.mod"
 model = LTI_Model(model_file, all_inputs, time_step, temperature)
-optimizer = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
+ampa = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
+
+# NMDA
+model_file  = root_dir / "mod/NMDA_10state.mod"
+model = LTI_Model(model_file, all_inputs, time_step, temperature)
+nmda = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
+
 fig = plt.figure(f"Log Offset {model.name}", figsize=(7.5, 4))
-gs = fig.add_gridspec(1, 2, hspace=0, wspace=0)
-grid = gs.subplots(sharey='all')
+gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
+grid = gs.subplots(sharex='all', sharey='all')
 
 if True:
     axes = grid[0]
     num_buckets = [20]
     for polynomial in (5, 4, 3, 2, 1, 0):
-        scales, errors = optimizer._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
+        scales, errors = ampa._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
         axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none', label=f'{polynomial} degree polynomial')
     axes.set_title(f"Error vs Polynomial\n{num_buckets[0]} input partitions")
     axes.set_xlabel("ϵ, the logarithmic offset")
@@ -49,8 +55,31 @@ if True:
     axes = grid[1]
     polynomial = 3
     for num_buckets in ([160], [80], [40], [20], [10], [5]):
-        scales, errors = optimizer._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
+        scales, errors = ampa._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
         axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none', label=f'{num_buckets[0]} input partitions')
+    axes.set_title(f"Error vs Partitions\n{polynomial} degree polynomial")
+    axes.set_xlabel("ϵ, the logarithmic offset")
+    axes.legend()
+
+if True:
+    axes = grid[2]
+    num_buckets = [20, 20]
+    for polynomial in ["v^3+v^2+v+1+C+C^2+C^3+v*C", "v^3+v^2+v+1", "1+C+C^2+C^3"]:
+        scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
+        axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none',
+                    label=f'{polynomial} degree polynomial')
+    axes.set_title(f"Error vs Polynomial\n{num_buckets[0]} input partitions")
+    axes.set_xlabel("ϵ, the logarithmic offset")
+    axes.set_ylabel("RMS of residual error")
+    axes.legend()
+
+if True:
+    axes = grid[3]
+    polynomial = "v^3+v^2+v+1+C+C^2+C^3+v*C"
+    for num_buckets in ([20, 20], [40, 10], [10, 40]):
+        scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
+        axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none',
+                    label=f'{num_buckets[0]} input partitions')
     axes.set_title(f"Error vs Partitions\n{polynomial} degree polynomial")
     axes.set_xlabel("ϵ, the logarithmic offset")
     axes.legend()

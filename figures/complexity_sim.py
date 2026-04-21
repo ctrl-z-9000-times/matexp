@@ -26,7 +26,7 @@ def speed_vs_accuracy(file, errors, time_step=0.025, temperature=37.0):
 
 def build_approximation(file, time_step, temperature, error):
     voltage_input = matexp.LinearInput('v', -100, 100)
-    glu_input     = matexp.LogarithmicInput('C', 0, 1e3)
+    glu_input     = matexp.LogarithmicInput('C', 0, 10)
     inputs        = [voltage_input, glu_input]
     return matexp.main(file, inputs, time_step, error=error, temperature=temperature,
             float_dtype=np.float64, target='host', verbose=2)
