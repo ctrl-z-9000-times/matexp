@@ -25,11 +25,13 @@ for file in Path("complexity_data").glob("*.csv"):
     min_table_size = min(min_table_size, min(size))
 print("Smallest table in dataset:", min_table_size, "bytes")
 
-plt.title('Speed vs Accuracy')
-plt.ylabel('Time to Integrate, per Instance per Time Step\nNanoseconds')
-plt.xlabel('Error Parameter')
+# plt.title('Speed vs Accuracy')
+plt.ylabel('Time (ns)')
+plt.xlabel('Accuracy')
 plt.ylim(bottom=0.0)
 plt.legend()
+
+plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
 
 plt.savefig("complexity.png", dpi=600, bbox_inches='tight')
 

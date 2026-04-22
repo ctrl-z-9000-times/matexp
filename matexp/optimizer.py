@@ -228,6 +228,12 @@ class Optimize1D(Optimizer):
             cursor = Parameters(self, midpoint, polynomial, self.verbose)
             if cursor.error > self.max_error:
                 min_buckets = cursor.num_buckets1 + 1
+                # Benchmark and early bail-out
+                if max_runtime is not None:
+                    cursor.benchmark()
+                    if cursor.runtime > max_runtime:
+                        if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}) runs too slow.\n')
+                        return cursor # It's ok to return invalid results BC they won't be used.
             else:
                 max_buckets = cursor.num_buckets1
                 max_buckets_parameters = cursor
