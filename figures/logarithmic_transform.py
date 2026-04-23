@@ -32,11 +32,13 @@ model = LTI_Model(model_file, all_inputs, time_step, temperature)
 ampa = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
 
 # NMDA
-model_file  = root_dir / "mod/NMDA_10state.mod"
-model = LTI_Model(model_file, all_inputs, time_step, temperature)
-nmda = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
-assert nmda.model.input1.name == 'C'
-assert nmda.model.input2.name == 'v'
+def make_nmda():
+    model_file  = root_dir / "mod/NMDA_10state.mod"
+    model = LTI_Model(model_file, all_inputs, time_step, temperature)
+    nmda = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
+    assert nmda.model.input1.name == 'C'
+    assert nmda.model.input2.name == 'v'
+    return nmda
 
 fig = plt.figure(f"Log Offset {model.name}", figsize=(7.5, 4))
 gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
@@ -63,10 +65,13 @@ if True:
     axes.set_xlabel("ϵ, the logarithmic offset")
     axes.legend()
 
+del ampa
+
 if True:
     axes = grid[1, 0]
     num_buckets = [10, 500]
     for polynomial in ["v^3+v^2+v+1+C+C^2+C^3+v*C", "v^3+v^2+v+1", "1+C+C^2+C^3"]:
+        nmda = make_nmda()
         scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
         axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none',
                     label=f'{polynomial} degree polynomial')
@@ -79,6 +84,7 @@ if True:
     axes = grid[1, 1]
     polynomial = "v^3+v^2+v+1+C+C^2+C^3+v*C"
     for num_buckets in ([10, 500], [5, 500], [10, 250], [5, 250]):
+        nmda = make_nmda()
         scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
         axes.loglog(scales, errors, linestyle='-', marker='o', markerfacecolor='none',
                     label=f'{num_buckets[0]} input partitions')

@@ -30,9 +30,7 @@ plt.ylabel('Time (ns)')
 plt.xlabel('Accuracy')
 plt.ylim(bottom=0.0)
 plt.legend()
-
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-
 plt.savefig("complexity.png", dpi=600, bbox_inches='tight')
 
 if not os.environ.get('NOSHOW', ''): plt.show()

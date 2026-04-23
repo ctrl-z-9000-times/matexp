@@ -65,5 +65,6 @@ ax.set_ylabel('Time to advance (ns)')
 ax.set_yscale("log")
 # ax.set_ylim(0, 250)
 ax.legend()
+plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
 plt.savefig("speed_plot.png", dpi=600, bbox_inches='tight')
 if not os.environ.get('NOSHOW', ''): plt.show()

@@ -100,6 +100,6 @@ plt.ylabel("error")
 plt.xlabel("Δt (μs)")
 plt.xlim(min(time_steps), max(time_steps))
 plt.legend()
-
+plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
 plt.savefig(args.DATA_DIR.name + ".png", dpi=600, bbox_inches='tight')
 if not os.environ.get('NOSHOW', ''): plt.show()
