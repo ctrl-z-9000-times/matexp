@@ -45,7 +45,7 @@ def measure_speed(num_instances, continuous):
     for input_set in input_arrays:
         for inp in inputs:
             input_set.append(inp.random(num_instances, np.float64, cupy))
-            input_set.append(cupy.arange(num_instances, dtype=np.int64))
+            input_set.append(cupy.arange(num_instances, dtype=np.int32))
     input_iter = itertools.cycle(input_arrays)
     # 
     def advance():
