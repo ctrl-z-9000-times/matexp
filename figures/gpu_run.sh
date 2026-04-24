@@ -5,15 +5,16 @@ set -ex
 exec > >(tee -i gpu_log.txt)
 exec 2>&1
 
-pip install cupy-cuda13x
+echo password | sudo -S pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12
+# pip install cupy-cuda13x
 
 mkdir -p gpu_data
 
 MOD_DIR=../mod
 MOD_FILES=(
+    "Nav11_6state.mod"
     "AMPA_13state.mod"
     "NMDA_10state.mod"
-    "Nav11_6state.mod"
     "Kv11_4state.mod"
     "Kv11_6state.mod"
     "Kv11_11state.mod"

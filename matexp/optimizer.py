@@ -54,7 +54,6 @@ class Parameters:
         self.set_num_buckets()
         self.backend = Codegen(
                 self.approx,
-                self.optimizer.float_dtype,
                 self.optimizer.target)
         from . import _measure_speed # Import just before using to avoid circular imports.
         self.runtime = _measure_speed(
@@ -62,17 +61,15 @@ class Parameters:
                 self.model.num_states,
                 self.model.inputs,
                 self.model.conserve_sum,
-                self.optimizer.float_dtype,
                 self.optimizer.target)
         self.table_size = self.approx.table.nbytes
         if self.verbose: print(f"Result: {round(self.runtime, 3)} ns/Δt\n")
 
 class Optimizer:
-    def __init__(self, model, max_error, float_dtype, target, verbose=False):
+    def __init__(self, model, max_error, target, verbose=False):
         self.model          = model
         self.max_error      = float(max_error)
         model.target_error  = self.max_error
-        self.float_dtype    = float_dtype
         self.target         = target
         self.verbose        = bool(verbose)
         self.samples        = MatrixSamples(self.model, self.verbose)

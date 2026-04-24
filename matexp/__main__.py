@@ -28,12 +28,7 @@ inputs.add_argument('--log', nargs='?', action='append', default=[],
 computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
-computer.add_argument('-f', '--float', choices=['32','64'], default='64',
-        help="default: 64")
 args = parser.parse_args()
-
-if   args.float == '32': float_dtype = np.float32
-elif args.float == '64': float_dtype = np.float64
 
 # Gather & organize all information about the inputs.
 inputs = {}
@@ -52,7 +47,7 @@ for name in args.log:
 inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
 main(args.nmodl_filename, inputs, args.time_step, args.temperature,
-     error=args.error, target=args.target, float_dtype=float_dtype,
+     error=args.error, target=args.target,
      outfile=args.output, verbose=args.verbose)
 
 _placeholder = lambda: None # Symbol for the CLI script to import and call.

@@ -26,7 +26,7 @@ git clone https://github.com/LLNL/Caliper.git
 
 # Download the PyPI dependencies.
 echo password | sudo -S pip install --upgrade pip setuptools wheel
-pip install matplotlib pytest find-libpython
+pip install matplotlib pytest find-libpython cmcrameri
 # pip install --user -r nrn/nrn_requirements.txt
 
 # Install the matexp program from source

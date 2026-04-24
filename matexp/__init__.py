@@ -29,14 +29,14 @@ _num_threads = len(os.sched_getaffinity(0))
 _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=_num_threads)
 
 def main(nmodl_filename, inputs, time_step, temperature,
-         error, float_dtype, target,
+         error, target,
          outfile=None, verbose=False):
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
     elif model.num_inputs == 2: OptimizerClass = Optimize2D
     else: raise NotImplementedError('too many inputs.')
-    optimizer = OptimizerClass(model, error, float_dtype, target, (verbose >= 2))
+    optimizer = OptimizerClass(model, error, target, (verbose >= 2))
     optimizer.run()
     optimized = optimizer.best
 
@@ -49,7 +49,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
     return optimized
 
 def main_manual(nmodl_filename, inputs, time_step, temperature,
-            polynomial, float_dtype, target,
+            polynomial, target,
             outfile, verbose=False):
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     samples = MatrixSamples(model, (verbose >= 2))
@@ -57,7 +57,7 @@ def main_manual(nmodl_filename, inputs, time_step, temperature,
     elif model.num_inputs == 2: ApproxClass = Approx2D
     else: raise NotImplementedError('too many inputs.')
     approx = ApproxClass(samples, polynomial)
-    codegen = Codegen(approx, float_dtype, target)
+    codegen = Codegen(approx, target)
     if verbose:
         print(str(approx).strip())
         residual = approx.measure_residual_error()
@@ -72,13 +72,13 @@ def _save_model(model, nmodl_text, outfile):
     with open(outfile, 'wt') as f:
         f.write(nmodl_text)
 
-def _initial_state(array_module, num_states, conserve_sum, num_instances, float_dtype):
+def _initial_state(array_module, num_states, conserve_sum, num_instances):
     """ Generate valid initial states, for testing and benchmarks. """
     state = [array_module.random.uniform(size=num_instances) for x in range(num_states)]
-    state = [array_module.array(x, dtype=float_dtype) for x in state]
+    state = [array_module.array(x, dtype=np.float64) for x in state]
     if conserve_sum is not None:
         conserve_sum = float(conserve_sum)
-        sum_states = array_module.zeros(num_instances, dtype=float_dtype)
+        sum_states = array_module.zeros(num_instances, dtype=np.float64)
         for array in state:
             sum_states = sum_states + array
         correction_factor = conserve_sum / sum_states
@@ -86,7 +86,7 @@ def _initial_state(array_module, num_states, conserve_sum, num_instances, float_
             array *= correction_factor
     return state
 
-def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
+def _measure_speed(f, num_states, inputs, conserve_sum, target):
     num_instances = 10 * 1000
     num_repetions = 200
     # 
@@ -98,7 +98,7 @@ def _measure_speed(f, num_states, inputs, conserve_sum, float_dtype, target):
         start_event = cupy.cuda.Event()
         end_event   = cupy.cuda.Event()
     # 
-    state = _initial_state(xp, num_states, conserve_sum, num_instances, np.float64)
+    state = _initial_state(xp, num_states, conserve_sum, num_instances)
     # 
     input_indicies = xp.arange(num_instances, dtype=np.int32)
     elapsed_times = np.empty(num_repetions)

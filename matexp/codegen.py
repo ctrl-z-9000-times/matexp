@@ -13,11 +13,10 @@ import tempfile
 import re
 
 class Codegen:
-    def __init__(self, table, float_dtype, target):
+    def __init__(self, table, target):
         self.model          = table.model
         self.table          = table.table
         self.polynomial     = table.polynomial
-        self.float_dtype    = float_dtype
         self.target         = target
         self.name           = self.model.name
         self.inputs         = self.model.inputs
@@ -26,7 +25,6 @@ class Codegen:
         self.num_states     = self.model.num_states
         self.conserve_sum   = self.model.conserve_sum
         assert self.num_states >= 0
-        assert self.float_dtype in (np.float32, np.float64)
         assert self.target in ('host', 'cuda')
         self.source_code = (
                 self._preamble() +
@@ -43,18 +41,13 @@ class Codegen:
              f"Time Step    : {self.model.time_step} ms\n"
              f"Temperature  : {self.model.temperature} C\n"
              f"Max Error    : {getattr(self.model, 'target_error', None)}\n"
-             f"Target       : {self.float_dtype.__name__} {self.target}\n"
+             f"Target       : {self.target}\n"
              f"Polynomial   : {self.polynomial}\n"
              f"Partitions   : {partitions}\n"
              f"{'*'*69}/\n\n")
         if self.target == 'host':
             if any(isinstance(inp, LogarithmicInput) for inp in self.inputs):
                 c += "#include <math.h>       /* log2 */\n\n"
-        if self.float_dtype == np.float32:
-            c +=  "typedef float real;\n\n"
-        elif self.float_dtype == np.float64:
-            c +=  "typedef double real;\n\n"
-        else: raise NotImplementedError(self.float_dtype)
         return c
 
     def _table_data(self):
@@ -65,14 +58,13 @@ class Codegen:
         # Flatten the input dimensions.
         table_data = self.table.reshape(-1, self.num_states, self.num_states, self.polynomial.num_terms)
         table_data = table_data.transpose(0, 2, 1, 3) # Switch from row-major to column-major format.
-        table_data = np.array(table_data, dtype=self.float_dtype)
         # Convert data from numbers into a string.
         data_str = ',\n    '.join(str(x) for x in table_data.flat)
         if self.target == 'cuda':
             device = '__device__ '
         elif self.target == 'host':
             device = ''
-        return f"{device}const real {self.name}_table[{table_data.size}] = {{\n    {data_str}}};\n\n"
+        return f"{device}const double {self.name}_table[{table_data.size}] = {{\n    {data_str}}};\n\n"
 
     def _entrypoint(self):
         c = 'extern "C" '
@@ -107,20 +99,15 @@ class Codegen:
             kernel_name = f"{self.name}_kernel"
         c += f"__inline__ extern void {kernel_name}("
         for idx in range(len(self.inputs)):
-            c += f"double input{idx}_f64, "
+            c += f"double input{idx}, "
         c += (f"double* state[{self.num_states}]) {{\n"
-              f"    const real* __restrict__ tbl_ptr = {self.name}_table;\n"
+              f"    const double* __restrict__ tbl_ptr = {self.name}_table;\n"
                "    // Locate the input within the look-up table.\n")
-        for idx in range(len(self.inputs)):
-            c += f"    real input{idx} = (real) input{idx}_f64;\n"
         for idx, inp in enumerate(self.inputs):
             if isinstance(inp, LinearInput):
                 c += f"    input{idx} = (input{idx} - {inp.minimum}) * {inp.bucket_frq};\n"
             elif isinstance(inp, LogarithmicInput):
-                log2 = "log2"
-                if self.target == 'cuda' and self.float_dtype == np.float32:
-                        log2 = "log2f"
-                c += f"    input{idx} = {log2}(input{idx} + {inp.scale});\n"
+                c += f"    input{idx} = log2(input{idx} + {inp.scale});\n"
                 c += f"    input{idx} = (input{idx} - {inp.log2_minimum}) * {inp.bucket_frq};\n"
             else: raise NotImplementedError(type(inp))
             c += (f"    int bucket{idx} = (int) input{idx};\n"
@@ -150,7 +137,7 @@ class Codegen:
             for inp_idx, power in enumerate(powers):
                 factors.extend([f"input{inp_idx}"] * power)
             if factors:
-                c += f"    const real term{term_idx} = {' * '.join(factors)};\n"
+                c += f"    const double term{term_idx} = {' * '.join(factors)};\n"
         c += "\n"
         terms = []
         for term_idx, powers in enumerate(self.polynomial.terms):
@@ -161,12 +148,12 @@ class Codegen:
         polynomial = ' + '.join(terms)
         if not init:
             zeros = ', '.join(['0.0'] * self.num_states)
-            c += (f"    real scratch[{self.num_states}] = {{{zeros}}};\n"
+            c += (f"    double scratch[{self.num_states}] = {{{zeros}}};\n"
                   f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
-                   "        const real s = (real) *state[col];\n"
+                   "        const double s = (double) *state[col];\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
                    "            // Approximate this entry of the matrix.\n"
-                  f"            const real polynomial = {polynomial};\n"
+                  f"            const double polynomial = {polynomial};\n"
                    "            scratch[row] += polynomial * s; // Compute the dot product. \n"
                    "        }\n"
                    "    }\n")
@@ -174,7 +161,7 @@ class Codegen:
             steadystate_period = 24 * 60 * 60 * 1000 # Number of milliseconds in one day.
             iterations = math.ceil(math.log2(steadystate_period / self.model.time_step))
             c += ( "    // Approximate the matrix.\n"
-                  f"    real matrix[{self.num_states**2}];\n"
+                  f"    double matrix[{self.num_states**2}];\n"
                   f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
                   f"            matrix[row * {self.num_states} + col] = {polynomial};\n"
@@ -182,10 +169,10 @@ class Codegen:
                    "    }\n"
                    "    // Repeatedly square the matrix to increase the period of integration.\n"
                   f"    for(int iteration = 0; iteration < {iterations}; ++iteration) {{\n"
-                  f"        real next_matrix[{self.num_states**2}];\n"
+                  f"        double next_matrix[{self.num_states**2}];\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
                   f"            for(int col = 0; col < {self.num_states}; ++col) {{\n"
-                  f"                real dot = 0.0;\n"
+                  f"                double dot = 0.0;\n"
                   f"                for(int x = 0; x < {self.num_states}; ++x) {{\n"
                   f"                    dot += matrix[row * {self.num_states} + x] * matrix[x * {self.num_states} + col];\n"
                   f"                }}\n"
@@ -197,11 +184,11 @@ class Codegen:
                   f"        }}\n"
                   f"    }}\n"
                    "    // Compute the dot product.\n"
-                  f"    real scratch[{self.num_states}] = {{0.0}};\n")
+                  f"    double scratch[{self.num_states}] = {{0.0}};\n")
             if self.conserve_sum is not None:
-                c += f"    const real s = {self.conserve_sum / self.num_states};\n"
+                c += f"    const double s = {self.conserve_sum / self.num_states};\n"
             else:
-                c += f"    const real s = 0.0;\n"
+                c += f"    const double s = 0.0;\n"
             c += (
                   f"    for(int col = 0; col < {self.num_states}; ++col) {{\n"
                   f"        for(int row = 0; row < {self.num_states}; ++row) {{\n"
@@ -210,11 +197,11 @@ class Codegen:
                    "    }\n")
         if self.conserve_sum is not None:
             c += ("    // Conserve the sum of the states.\n"
-                  "    real sum_states = 0.0;\n"
+                  "    double sum_states = 0.0;\n"
                  f"    for(int x = 0; x < {self.num_states}; ++x) {{\n"
                   "        sum_states += scratch[x];\n"
                   "    }\n"
-                 f"    const real correction_factor = {self.conserve_sum} / sum_states;\n"
+                 f"    const double correction_factor = {self.conserve_sum} / sum_states;\n"
                  f"    for(int x = 0; x < {self.num_states}; ++x) {{\n"
                   "        scratch[x] *= correction_factor;\n"
                   "    }\n")

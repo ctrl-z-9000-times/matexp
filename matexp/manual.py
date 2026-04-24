@@ -29,12 +29,7 @@ inputs.add_argument('--log', nargs=2, action='append', default=[],
 computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
-computer.add_argument('-f', '--float', choices=['32','64'], default='64',
-        help="default: 64")
 args = parser.parse_args()
-
-if   args.float == '32': float_dtype = np.float32
-elif args.float == '64': float_dtype = np.float64
 
 # Create the input data structures.
 inputs = {}
@@ -52,7 +47,7 @@ for name in log_scales:
         parser.error(f'Argument "--log {name}" does not match any input name.')
 
 main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.temperature,
-        args.polynomial, target=args.target, float_dtype=float_dtype,
+        args.polynomial, target=args.target,
         outfile=args.output, verbose=args.verbose)
 
 _placeholder = lambda: None # Symbol for the CLI script to import and call.

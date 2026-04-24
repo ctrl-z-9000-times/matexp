@@ -12,7 +12,6 @@ parser.add_argument("MOD_FILE", type=Path)
 args = parser.parse_args()
 # 
 time_step       = .025
-float_dtype     = np.float64
 voltage_input   = matexp.LinearInput('v', -100, 100)
 glutamate_input = matexp.LogarithmicInput('C', 0, 10)
 parameters = matexp.main(args.MOD_FILE, [voltage_input, glutamate_input],
@@ -20,7 +19,6 @@ parameters = matexp.main(args.MOD_FILE, [voltage_input, glutamate_input],
     temperature=37,
     error=1e-4,
     target='cuda',
-    float_dtype=float_dtype,
     verbose=2)
 model_name  = parameters.model.name
 inputs      = parameters.model.inputs
@@ -41,13 +39,12 @@ def measure_speed(num_instances, continuous):
     # Setup random initial state.
     state = matexp._initial_state(cupy, num_states,
         conserve_sum=1.0,
-        num_instances=num_instances,
-        float_dtype=float_dtype)
+        num_instances=num_instances)
     # Cycle through several different input values.
     input_arrays = [[] for _ in range(20)]
     for input_set in input_arrays:
         for inp in inputs:
-            input_set.append(inp.random(num_instances, float_dtype, cupy))
+            input_set.append(inp.random(num_instances, np.float64, cupy))
             input_set.append(cupy.arange(num_instances, dtype=np.int64))
     input_iter = itertools.cycle(input_arrays)
     # 

@@ -29,14 +29,14 @@ def build_approximation(file, time_step, temperature, error):
     glu_input     = matexp.LogarithmicInput('C', 0, 10)
     inputs        = [voltage_input, glu_input]
     return matexp.main(file, inputs, time_step, error=error, temperature=temperature,
-            float_dtype=np.float64, target='host', verbose=2)
+                        target='host', verbose=2)
 
 def measure_speed(parameters):
     fn = parameters.backend.load()
     inputs = parameters.model.inputs
     num_states = parameters.model.num_states
     return matexp._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
-                                  float_dtype = np.float64, target = 'host')
+                                target = 'host')
 
 def table_size(parameters):
     return parameters.approx.table.nbytes
