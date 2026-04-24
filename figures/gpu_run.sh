@@ -5,6 +5,8 @@ set -ex
 exec > >(tee -i gpu_log.txt)
 exec 2>&1
 
+pip install cupy-cuda13x
+
 mkdir -p gpu_data
 
 MOD_DIR=../mod
