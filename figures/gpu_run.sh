@@ -5,14 +5,20 @@ set -ex
 exec > >(tee -i gpu_log.txt)
 exec 2>&1
 
-rm -rf gpu_data
 mkdir -p gpu_data
 
-MOD_FILES=(../mod/*.mod)
-# MOD_FILES=(../mod/Nav11.mod)
-MOD_FILES+=(hh_markov.mod)
+MOD_DIR=../mod
+MOD_FILES=(
+    "AMPA_13state.mod"
+    "NMDA_10state.mod"
+    "Nav11_6state.mod"
+    "Kv11_4state.mod"
+    "Kv11_6state.mod"
+    "Kv11_11state.mod"
+    "Kv11_13state.mod"
+)
 
 for file in "${MOD_FILES[@]}"; do
-    python gpu_sim.py $file
+    python gpu_sim.py $MOD_DIR/$file
 done
-python gpu_plot.py
+# python gpu_plot.py

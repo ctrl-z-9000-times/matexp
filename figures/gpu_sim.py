@@ -12,7 +12,7 @@ parser.add_argument("MOD_FILE", type=Path)
 args = parser.parse_args()
 # 
 time_step       = .025
-float_dtype     = np.float32
+float_dtype     = np.float64
 voltage_input   = matexp.LinearInput('v', -100, 100)
 glutamate_input = matexp.LogarithmicInput('C', 0, 10)
 parameters = matexp.main(args.MOD_FILE, [voltage_input, glutamate_input],
@@ -34,6 +34,8 @@ def flush_cache():
     l2 = props['l2CacheSize']
     big_data = cupy.empty(l2, dtype=np.int64) # 8x multiplier
     big_data += 1
+    big_data += 1
+    big_data += 1
 # 
 def measure_speed(num_instances, continuous):
     # Setup random initial state.
@@ -46,7 +48,7 @@ def measure_speed(num_instances, continuous):
     for input_set in input_arrays:
         for inp in inputs:
             input_set.append(inp.random(num_instances, float_dtype, cupy))
-            input_set.append(cupy.arange(num_instances, dtype=np.int32))
+            input_set.append(cupy.arange(num_instances, dtype=np.int64))
     input_iter = itertools.cycle(input_arrays)
     # 
     def advance():
@@ -102,7 +104,7 @@ while True:
 print(f"throughput {num_instances} x")
 
 # 
-data_file = Path("gpu_data").joinpath(model_name)
+data_file = Path("gpu_data").joinpath(model_name).with_suffix('.csv')
 with open(data_file, 'wt') as file:
-    print(batch_time, file=file)
-    print(num_instances, file=file)
+    print(f"{batch_size},rt", file=file)
+    print(batch_time, num_instances, sep=',', file=file)
