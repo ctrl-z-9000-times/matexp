@@ -21,7 +21,7 @@ done
 wait -f $(jobs -p)
 
 for dt in "${time_steps[@]}"; do
-    python ap_sim.py approx32 $dt
+    python ap_sim.py approx $dt
 done
 
 max_errors=(
@@ -32,7 +32,7 @@ max_errors=(
 )
 
 for err in "${max_errors[@]}"; do
-    python ap_sim.py approx64 .025 $err
+    python ap_sim.py approx .025 $err
 done
 
 python ap_plot.py

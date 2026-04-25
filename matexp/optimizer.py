@@ -287,7 +287,7 @@ class Optimize2D(Optimizer):
                     if new.error < cursor.error:
                         cursor = new
                     else:
-                        raise RuntimeError("Failed to reach target accuracy.")
+                        raise RuntimeError("Failed to reach target accuracy (check model stability).")
             # Reduce the num_buckets until it fails to meet the target accuracy.
             delta /= 2
             decrease = lambda x: max(1, min(x * (1 - delta), x - 1))
