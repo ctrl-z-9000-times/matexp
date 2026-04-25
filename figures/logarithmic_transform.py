@@ -24,19 +24,19 @@ time_step   = 0.025
 temperature = 37
 verbose     = 2
 v_input     = LinearInput("v", -100, 100)
-g_input     = LogarithmicInput('C', 0, 100)
+g_input     = LogarithmicInput('C', 0, 10)
 all_inputs  = [v_input, g_input]
 
 # AMPA
 model_file  = root_dir / "mod/AMPA_13state.mod"
 model = LTI_Model(model_file, all_inputs, time_step, temperature)
-ampa = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
+ampa = Optimizer(model, error_arg, "host", (verbose >= 2))
 
 # NMDA
 def make_nmda():
     model_file  = root_dir / "mod/NMDA_10state.mod"
     model = LTI_Model(model_file, all_inputs, time_step, temperature)
-    nmda = Optimizer(model, error_arg, np.float64, "host", (verbose >= 2))
+    nmda = Optimizer(model, error_arg, "host", (verbose >= 2))
     assert nmda.model.input1.name == 'C'
     assert nmda.model.input2.name == 'v'
     return nmda
@@ -91,9 +91,11 @@ if True:
     polynomial = "v^3+v^2+v+1+C+C^2+C^3+v*C"
     for index, num_buckets in enumerate(([10, 500], [5, 500], [10, 250], [5, 250])):
         nmda = make_nmda()
+        print(num_buckets, polynomial, min_scale, num_scales)
         scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
+        print(scales, errors)
         axes.loglog(scales, errors, linestyle='-',
-                    label=f'{num_buckets[0]} input partitions',
+                    label=f'glu/{num_buckets[0]} v/{num_buckets[1]}',
                     color=cmc.batlow(index / 3))
     axes.set_xlabel("Logarithmic offset, ϵ")
     axes.legend()

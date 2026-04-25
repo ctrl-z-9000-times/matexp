@@ -23,7 +23,7 @@ if args.model is None:
     root_dir    = Path(__file__).parent.parent
     args.model  = root_dir / "mod" / "Nav11_6state.mod"
 v_input     = LinearInput("v", -90, 60)
-g_input     = LogarithmicInput('C', 0, 1e2)
+g_input     = LogarithmicInput('C', 0, 10) # Glutamate
 all_inputs  = [v_input, g_input]
 self        = LTI_Model(args.model, all_inputs, args.time_step, args.temperature)
 # 
@@ -81,8 +81,8 @@ if self.num_inputs == 1:
 
 elif self.num_inputs == 2:
     input1, input2 = self.inputs
-    if isinstance(input1, LogarithmicInput): input1.scale = 0.01
-    if isinstance(input2, LogarithmicInput): input2.scale = 0.01
+    if isinstance(input1, LogarithmicInput): input1.scale = 1
+    if isinstance(input2, LogarithmicInput): input2.scale = 1
     input1.set_num_buckets(100)
     input2.set_num_buckets(100)
     # Sample the inputs.

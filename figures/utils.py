@@ -37,6 +37,8 @@ def all_mod_files():
     mod_dir = fig_dir.parent.joinpath("mod")
     mod_files = [fig_dir / "presyn.mod"]
     mod_files.extend(mod_dir.glob("*.mod"))
+    mod_files.remove(mod_dir / "Kv21_6state.mod")
+    mod_files.remove(mod_dir / "Kv21_13state.mod")
     return mod_files
 
 def dedup_mod_files():
