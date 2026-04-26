@@ -31,6 +31,8 @@ _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=_num_threads)
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
          outfile=None, verbose=False):
+    if verbose >= 2:
+        print("Thread pool", _num_threads)
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D

@@ -135,7 +135,7 @@ class Approx:
             exact  = np.linalg.matrix_power(exact, power)
             return np.max(np.abs(approx - exact))
         from . import _thread_pool # Lazy import to avoid circular dependency.
-        return max(_thread_pool.map(process_bucket, self.samples))
+        return max(_thread_pool.map(process_bucket, self.samples, chunksize=1))
 
     def __str__(self):
         s = ''
@@ -181,8 +181,8 @@ class Approx1D(Approx):
 
     def _make_table(self):
         self.table = np.empty([self.input1.num_buckets, self.num_states, self.num_states, self.num_terms])
-        rss_sum = 0
-        for (bucket_index,), (input_values,), exact_data in self.samples:
+        def compute_chunk(bucket_data):
+            (bucket_index,), (input_values,), exact_data = bucket_data
             # Scale the inputs into the range [0,1].
             input1_locations = self.input1.get_bucket_value(input_values) - bucket_index
             A = self._polynomial_basis(input1_locations, self.num_terms)
@@ -190,7 +190,9 @@ class Approx1D(Approx):
             coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
             coef = coef.reshape(self.num_terms, self.num_states, self.num_states).transpose(1,2,0)
             self.table[bucket_index, :, :, :] = coef
-            rss_sum += np.sum(rss)
+            return np.sum(rss)
+        from . import _thread_pool
+        rss_sum = sum(_thread_pool.map(compute_chunk, self.samples, chunksize=1))
         self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def approximate_matrix(self, input1):

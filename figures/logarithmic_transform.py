@@ -42,7 +42,7 @@ def make_nmda():
     return nmda
 
 fig = plt.figure(f"Log Offset {model.name}", figsize=(7.5, 7.5))
-gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
+gs = fig.add_gridspec(1, 2, hspace=0, wspace=0)
 grid = gs.subplots(sharex='all', sharey='all')
 
 for axes in grid.flat:
@@ -51,7 +51,7 @@ for axes in grid.flat:
     axes.yaxis.set_tick_params(direction="in")
 
 if True:
-    axes = grid[0, 0]
+    axes = grid[0]
     num_buckets = [20]
     for index, polynomial in enumerate((5, 4, 3, 2, 1, 0)):
         scales, errors = ampa._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
@@ -62,7 +62,7 @@ if True:
     axes.legend()
 
 if True:
-    axes = grid[0, 1]
+    axes = grid[1]
     polynomial = 3
     for index, num_buckets in enumerate(([160], [80], [40], [20], [10], [5])):
         scales, errors = ampa._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
@@ -73,7 +73,7 @@ if True:
 
 del ampa
 
-if True:
+if False:
     axes = grid[1, 0]
     num_buckets = [10, 500]
     for index, polynomial in enumerate(["v^3+v^2+v+1+C+C^2+C^3+v*C", "v^3+v^2+v+1", "1+C+C^2+C^3"]):
@@ -86,7 +86,7 @@ if True:
     axes.set_ylabel("Residual error")
     axes.legend()
 
-if True:
+if False:
     axes = grid[1, 1]
     polynomial = "v^3+v^2+v+1+C+C^2+C^3+v*C"
     for index, num_buckets in enumerate(([10, 500], [5, 500], [10, 250], [5, 250])):
