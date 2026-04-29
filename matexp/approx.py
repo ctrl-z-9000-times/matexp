@@ -215,8 +215,8 @@ class Approx2D(Approx):
     def _make_table(self):
         self.table = np.empty([self.input1.num_buckets, self.input2.num_buckets,
                                 self.num_states, self.num_states, self.num_terms])
-        rss_sum = 0
-        for (bucket_index1, bucket_index2), (input1_values, input2_values), exact_data in self.samples:
+        def compute_chunk(bucket_data):
+            (bucket_index1, bucket_index2), (input1_values, input2_values), exact_data = bucket_data
             # Scale the inputs into the range [0,1].
             input1_locations = self.input1.get_bucket_value(input1_values) - bucket_index1
             input2_locations = self.input2.get_bucket_value(input2_values) - bucket_index2
@@ -228,7 +228,9 @@ class Approx2D(Approx):
             coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
             coef = coef.reshape(self.num_terms, self.num_states, self.num_states).transpose(1,2,0)
             self.table[bucket_index1, bucket_index2, :, :, :] = coef
-            rss_sum += np.sum(rss)
+            return np.sum(rss)
+        from . import _thread_pool
+        rss_sum = sum(_thread_pool.map(compute_chunk, self.samples, chunksize=1))
         self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def approximate_matrix(self, input1, input2):

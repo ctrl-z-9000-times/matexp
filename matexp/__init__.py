@@ -9,7 +9,12 @@ For more information see:
     https://doi.org/10.1007/s004220050570
 """
 
-# Written by David McDougall, 2022-2025
+# Written by David McDougall, 2022-2026
+
+# Disable automatic multithreading
+import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
 
 from .approx import Approx1D, Approx2D, MatrixSamples
 from .codegen import Codegen
@@ -17,16 +22,14 @@ from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
 from pathlib import Path
-import concurrent.futures
+import multiprocessing.pool
 import numpy as np
-import os
 import time
 import sys
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
-
 _num_threads = len(os.sched_getaffinity(0))
-_thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=_num_threads)
+_thread_pool = multiprocessing.pool.Pool(_num_threads)
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
