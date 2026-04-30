@@ -6,6 +6,9 @@ import cupy
 import matexp
 import numpy as np
 import itertools
+import sys
+
+sys.modules['__main__'] = sys.modules['matexp']
 # 
 parser = argparse.ArgumentParser()
 parser.add_argument("MOD_FILE", type=Path)

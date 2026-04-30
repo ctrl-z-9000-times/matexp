@@ -31,6 +31,10 @@ class LTI_Model(NMODL_Compiler):
         for dim, input_data in enumerate(self.inputs):
             assert np.all(input_data.minimum <= inputs[dim, :])
             assert np.all(input_data.maximum >= inputs[dim, :])
+        # Lazy import to avoid circular dependency.
+        from . import _num_threads, _thread_pool, _initialize_thread_pool
+        if _thread_pool is None:
+            _thread_pool = _initialize_thread_pool(False)
         # Setup shared memory buffers.
         inputs_shape = (self.num_inputs, num_samples)
         deriv_shape = (num_samples, self.num_states, self.num_states)
@@ -40,7 +44,6 @@ class LTI_Model(NMODL_Compiler):
         inputs_buf[:,:] = inputs
         try:
             # Break up the input into chunks for multithreading.
-            from . import _num_threads, _thread_pool # Lazy import to avoid circular dependency.
             num_chunks = _num_threads * 3
             boundaries = [num_samples * i // num_chunks for i in range(num_chunks + 1)]
             input_slices = [slice(*pair) for pair in pairwise(boundaries)]

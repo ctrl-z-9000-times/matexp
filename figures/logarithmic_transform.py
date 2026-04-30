@@ -8,6 +8,7 @@ from matexp.optimizer import Optimizer
 import os
 import sys
 sys.stdout.reconfigure(line_buffering=True)
+sys.modules['__main__'] = sys.modules['matexp']
 import matplotlib.pyplot as plt
 import numpy as np
 import cmcrameri.cm as cmc

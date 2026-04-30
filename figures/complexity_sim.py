@@ -11,6 +11,9 @@ import matexp
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
+
+sys.modules['__main__'] = sys.modules['matexp']
 
 def speed_vs_accuracy(file, errors, time_step=0.025, temperature=37.0):
     output = Path("complexity_data").joinpath(Path(file).name).with_suffix(".csv")

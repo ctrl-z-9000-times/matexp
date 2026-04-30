@@ -31,7 +31,8 @@ import sys
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
 _num_threads = len(os.sched_getaffinity(0))
-def _initialize_worker_pool(verbose):
+_thread_pool = None
+def _initialize_thread_pool(verbose):
     global _thread_pool
     if verbose: print("Worker pool:", _num_threads, 'processes')
     # Manually delete any leftover shared memory files from a previous run.
@@ -42,11 +43,12 @@ def _initialize_worker_pool(verbose):
         pass # todo
     multiprocessing.set_start_method('spawn')
     _thread_pool = multiprocessing.Pool(_num_threads)
+    return _thread_pool
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
          outfile=None, verbose=False):
-    _initialize_worker_pool(verbose >= 2)
+    _initialize_thread_pool(verbose >= 2)
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
@@ -67,7 +69,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
 def main_manual(nmodl_filename, inputs, time_step, temperature,
             polynomial, target,
             outfile, verbose=False):
-    _initialize_worker_pool(verbose >= 2)
+    _initialize_thread_pool(verbose >= 2)
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     samples = MatrixSamples(model, (verbose >= 2))
     if   model.num_inputs == 1: ApproxClass = Approx1D

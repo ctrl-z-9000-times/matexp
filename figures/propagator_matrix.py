@@ -13,6 +13,8 @@ from matexp.lti_model import LTI_Model
 
 sys.stdout.reconfigure(line_buffering=True)
 
+sys.modules['__main__'] = sys.modules['matexp']
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--time_step", type=float, default=1)
 parser.add_argument("--temperature", type=float, default=37)
