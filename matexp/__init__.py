@@ -23,20 +23,30 @@ from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
 from pathlib import Path
-import multiprocessing.pool
+import multiprocessing
 import numpy as np
 import time
 import sys
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
+
 _num_threads = len(os.sched_getaffinity(0))
-_thread_pool = multiprocessing.pool.Pool(_num_threads)
+def _initialize_worker_pool(verbose):
+    global _thread_pool
+    if verbose: print("Worker pool:", _num_threads, 'processes')
+    # Manually delete any leftover shared memory files from a previous run.
+    if os.name == 'posix':
+        for mem_leak in Path("/dev/shm/").glob("matexp_*"):
+            mem_leak.unlink()
+    else:
+        pass # todo
+    multiprocessing.set_start_method('spawn')
+    _thread_pool = multiprocessing.Pool(_num_threads)
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
          outfile=None, verbose=False):
-    if verbose >= 2:
-        print("Thread pool", _num_threads)
+    _initialize_worker_pool(verbose >= 2)
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
@@ -57,6 +67,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
 def main_manual(nmodl_filename, inputs, time_step, temperature,
             polynomial, target,
             outfile, verbose=False):
+    _initialize_worker_pool(verbose >= 2)
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     samples = MatrixSamples(model, (verbose >= 2))
     if   model.num_inputs == 1: ApproxClass = Approx1D

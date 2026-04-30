@@ -29,26 +29,31 @@ inputs.add_argument('--log', nargs=2, action='append', default=[],
 computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
-args = parser.parse_args()
 
-# Create the input data structures.
-inputs = {}
-log_scales = {name: float(scale) for name, scale in args.log}
-for (name, minimum, maximum, bins) in args.input:
-    if name in log_scales:
-        inputs[name] = inp = LogarithmicInput(name, minimum, maximum)
-        inp.set_num_buckets(bins, log_scales[name])
-    else:
-        inputs[name] = inp = LinearInput(name, minimum, maximum)
-        inp.set_num_buckets(bins)
-# 
-for name in log_scales:
-    if name not in inputs:
-        parser.error(f'Argument "--log {name}" does not match any input name.')
+if __name__.endswith('__main__'):
+    args = parser.parse_args()
 
-main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.temperature,
-        args.polynomial, target=args.target,
-        outfile=args.output, verbose=args.verbose)
+    # Create the input data structures.
+    inputs = {}
+    log_scales = {name: float(scale) for name, scale in args.log}
+    for (name, minimum, maximum, bins) in args.input:
+        if name in log_scales:
+            inputs[name] = inp = LogarithmicInput(name, minimum, maximum)
+            inp.set_num_buckets(bins, log_scales[name])
+        else:
+            inputs[name] = inp = LinearInput(name, minimum, maximum)
+            inp.set_num_buckets(bins)
+    # 
+    for name in log_scales:
+        if name not in inputs:
+            parser.error(f'Argument "--log {name}" does not match any input name.')
 
-_placeholder = lambda: None # Symbol for the CLI script to import and call.
+    # Set this module as the __main__ module, in case run from /bin/matexp-manual
+    sys.modules['__main__'] = sys.modules[__name__] # Fixes multiprocessing issues, do not remove.
+
+    main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.temperature,
+            args.polynomial, target=args.target,
+            outfile=args.output, verbose=args.verbose)
+
+    _placeholder = lambda: None # Symbol for the CLI script to import and call.
 

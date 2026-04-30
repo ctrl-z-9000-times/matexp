@@ -1,6 +1,7 @@
 from matexp import main, LinearInput, LogarithmicInput
 import argparse
 import numpy as np
+import sys
 
 parser = argparse.ArgumentParser(prog='matexp',
         description="Solves Markov models for NEURON mechanisms",)
@@ -28,27 +29,32 @@ inputs.add_argument('--log', nargs='?', action='append', default=[],
 computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
-args = parser.parse_args()
 
-# Gather & organize all information about the inputs.
-inputs = {}
-for (name, minimum, maximum) in args.input:
-    inputs[name] = [LinearInput, (name, minimum, maximum)]
-for name in args.log:
-    if name is None:
-        if len(inputs) == 1:
-            name = next(iter(inputs))
-        else:
-            parser.error(f'Argument "--log" must specify which input it refers to.')
-    elif name not in inputs:
-        parser.error(f'Argument "--log {name}" does not match any input name.')
-    inputs[name][0] = LogarithmicInput
-# Create the input data structures.
-inputs = [input_type(*args) for (input_type, args) in inputs.values()]
+if __name__.endswith('__main__'):
+    args = parser.parse_args()
 
-main(args.nmodl_filename, inputs, args.time_step, args.temperature,
-     error=args.error, target=args.target,
-     outfile=args.output, verbose=args.verbose)
+    # Gather & organize all information about the inputs.
+    inputs = {}
+    for (name, minimum, maximum) in args.input:
+        inputs[name] = [LinearInput, (name, minimum, maximum)]
+    for name in args.log:
+        if name is None:
+            if len(inputs) == 1:
+                name = next(iter(inputs))
+            else:
+                parser.error(f'Argument "--log" must specify which input it refers to.')
+        elif name not in inputs:
+            parser.error(f'Argument "--log {name}" does not match any input name.')
+        inputs[name][0] = LogarithmicInput
+    # Create the input data structures.
+    inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
-_placeholder = lambda: None # Symbol for the CLI script to import and call.
+    # Set this module as the __main__ module, in case run from /bin/matexp
+    sys.modules['__main__'] = sys.modules[__name__] # Fixes multiprocessing issues, do not remove.
+
+    main(args.nmodl_filename, inputs, args.time_step, args.temperature,
+         error=args.error, target=args.target,
+         outfile=args.output, verbose=args.verbose)
+
+    _placeholder = lambda: None # Symbol for the CLI script to import and call.
 

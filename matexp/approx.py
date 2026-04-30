@@ -73,14 +73,14 @@ class MatrixSamples:
             self.inputs_sm = []
             self.inputs = []
             for dim in range(num_inputs):
-                sm = SharedMemory(f'_matexp_sample_inputs_{dim}', True, 8 * new_alloc)
+                sm = SharedMemory(f'matexp_inputs_{dim}', True, 8 * new_alloc)
                 buf = np.ndarray((total_samples,), dtype=np.float64, buffer=sm.buf)
                 self.inputs_sm.append(sm)
                 self.inputs.append(buf)
                 buf[:old_samples] = inputs_tmp[dim]
                 buf[old_samples:] = inputs[dim]
             samples_bytes = 8 * new_alloc * num_states * num_states
-            self.samples_sm = SharedMemory('_matexp_sample_data', True, samples_bytes)
+            self.samples_sm = SharedMemory('matexp_samples', True, samples_bytes)
             self.samples = np.ndarray(samples_shape, dtype=np.float64, buffer=self.samples_sm.buf)
             self.samples[:old_samples, :, :] = samples_tmp
             self.samples[old_samples:, :, :] = matrices
@@ -121,8 +121,8 @@ class MatrixSamples:
     def _get_sm_weakref(num_inputs):
         inputs_sm = []
         for dim in range(num_inputs):
-            inputs_sm.append(SharedMemory(f'_matexp_sample_inputs_{dim}', False))
-        samples_sm = SharedMemory('_matexp_sample_data', False)
+            inputs_sm.append(SharedMemory(f'matexp_inputs_{dim}', False))
+        samples_sm = SharedMemory('matexp_samples', False)
         return (inputs_sm, samples_sm)
 
     def _free_sm(self):
@@ -156,7 +156,7 @@ class Approx:
     def _alloc_table(self):
         global _table_name_autoinc
         table_shape = self.num_buckets + (self.num_states, self.num_states, self.num_terms)
-        self.table_name = f"_matexp_approx_{_table_name_autoinc}"
+        self.table_name = f"matexp_approx_{_table_name_autoinc}"
         self.table_sm  = SharedMemory(self.table_name, True, 8 * np.prod(table_shape))
         self.table = np.ndarray(table_shape, dtype=np.float64, buffer=self.table_sm.buf)
         _table_name_autoinc += 1

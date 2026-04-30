@@ -138,7 +138,7 @@ class Optimizer:
         elif self.model.num_inputs == 2: ApproxClass = Approx2D
 
         # Measure the error associated with each scale parameter.
-        if self.verbose: print(f'Evaluating {num_scales} scales ...')
+        if self.verbose: print(f'Evaluating {num_scales} scales', end='', flush=True)
         rss_error = []
         # absmax_error = []
         for scale in search_space:
