@@ -126,7 +126,7 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
         for inp in inputs:
             input_arrays.append(inp.random(num_instances, np.float64, xp))
             input_arrays.append(input_indicies)
-        _clear_CPU_cache(xp)
+        _clear_data_cache(xp)
         time.sleep(0) # Try to avoid task switching while running.
         os.sched_yield()
         if target == 'cuda':
@@ -141,7 +141,7 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
             elapsed_times[trial] = time.thread_time_ns() - start_time
     return np.min(elapsed_times) / num_instances
 
-def _clear_CPU_cache(array_module):
+def _clear_data_cache(array_module):
     # Read and then write back 32MB of data. Assuming that the CPU is using a
     # least-recently-used replacement policy, touching every piece of data once
     # should be sufficient to put it into the cache.

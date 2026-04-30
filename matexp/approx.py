@@ -161,6 +161,18 @@ class Approx:
         self.table = np.ndarray(table_shape, dtype=np.float64, buffer=self.table_sm.buf)
         _table_name_autoinc += 1
 
+    def _make_table(self):
+        from . import _thread_pool
+        args = zip(repeat(self.table_name),
+                    *(repeat(inp) for inp in self.model.inputs),
+                    repeat(self.model.num_states),
+                    repeat(self.polynomial),
+                    repeat(len(self.samples)),
+                    iter(self.samples))
+        rss_sum = sum(map(self._table_kernel, args)) # Single threaded
+        # rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
+        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
+
     def __del__(self):
         if self.table_sm is not None:
             self.table_sm.close()
@@ -250,22 +262,11 @@ class Approx1D(Approx):
             A[:, power] = input1_locations ** power
         return A
 
-    def _make_table(self):
-        from . import _thread_pool
-        args = zip(repeat(self.table_name),
-                    repeat(self.model.input1),
-                    repeat(self.model.num_states),
-                    repeat(self.num_terms),
-                    repeat(len(self.samples)),
-                    iter(self.samples))
-        # rss_sum = sum(map(self._table_kernel, args)) # Single threaded
-        rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
-        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
-
     @staticmethod
     def _table_kernel(args):
         # Unpack the arguments.
-        table_name, input1, num_states, num_terms, num_samples, ((bucket_index,), data_range) = args
+        table_name, input1, num_states, polynomial, num_samples, ((bucket_index,), data_range) = args
+        num_terms = polynomial.num_terms
         (inputs_sm,), samples_sm = MatrixSamples._get_sm_weakref(1)
         table_sm        = SharedMemory(table_name, False)
         inputs_shape    = (num_samples,)
@@ -335,26 +336,45 @@ class Approx2D(Approx):
         self._alloc_table()
         self._make_table()
 
-    def _make_table(self):
-        self.table = np.empty([self.input1.num_buckets, self.input2.num_buckets,
-                                self.num_states, self.num_states, self.num_terms])
-        def compute_chunk(bucket_data):
-            (bucket_index1, bucket_index2), (input1_values, input2_values), exact_data = bucket_data
-            # Scale the inputs into the range [0,1].
-            input1_locations = self.input1.get_bucket_value(input1_values) - bucket_index1
-            input2_locations = self.input2.get_bucket_value(input2_values) - bucket_index2
-            # Make an approximation for each entry in the matrix.
-            A = np.empty([len(input1_values), self.num_terms])
-            for term, (power1, power2) in enumerate(self.polynomial.terms):
-                A[:, term] = (input1_locations ** power1) * (input2_locations ** power2)
-            B = exact_data.reshape(-1, self.num_states**2)
-            coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
-            coef = coef.reshape(self.num_terms, self.num_states, self.num_states).transpose(1,2,0)
-            self.table[bucket_index1, bucket_index2, :, :, :] = coef
-            return np.sum(rss)
-        from . import _thread_pool
-        rss_sum = sum(_thread_pool.map(compute_chunk, self.samples, chunksize=1))
-        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
+    @staticmethod
+    def _polynomial_basis(input1_locations, input2_locations, polynomial):
+        # Make an approximation for each entry in the matrix.
+        A = np.empty([len(input1_locations), polynomial.num_terms])
+        for term, (power1, power2) in enumerate(polynomial.terms):
+            A[:, term] = (input1_locations ** power1) * (input2_locations ** power2)
+        return A
+
+    @staticmethod
+    def _table_kernel(args):
+        # Unpack the arguments.
+        (table_name, input1, input2, num_states, polynomial,
+                num_samples, ((bucket_index1, bucket_index2,), data_range)) = args
+        num_terms = polynomial.num_terms
+        # Setup the shared memory.
+        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2)
+        table_sm        = SharedMemory(table_name, False)
+        inputs_shape    = (num_samples,)
+        samples_shape   = (num_samples, num_states, num_states)
+        table_shape     = (input1.num_buckets, input2.num_buckets, num_states, num_states, num_terms)
+        input1_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input1_sm.buf)
+        input2_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input2_sm.buf)
+        samples_buf     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
+        table_buf       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
+        # Slice out the current bucket's samples.
+        num_samples = data_range[1] - data_range[0]
+        input1_buf  = input1_buf[data_range[0] : data_range[1]]
+        input2_buf  = input2_buf[data_range[0] : data_range[1]]
+        samples_buf = samples_buf[data_range[0] : data_range[1]]
+        # Scale the inputs into the range [0,1].
+        input1_locations = input1.get_bucket_value(input1_buf) - bucket_index1
+        input2_locations = input2.get_bucket_value(input2_buf) - bucket_index2
+        #
+        A = Approx2D._polynomial_basis(input1_locations, input2_locations, polynomial)
+        B = samples_buf.reshape(-1, num_states**2)
+        coef, rss = np.linalg.lstsq(A, B, rcond=None)[:2]
+        coef = coef.reshape(num_terms, num_states, num_states).transpose(1,2,0)
+        table_buf[bucket_index1, bucket_index2, :, :, :] = coef
+        return np.sum(rss)
 
     def approximate_matrix(self, input1, input2):
         assert len(input1.shape) == 1 and input1.shape == input2.shape
@@ -368,3 +388,36 @@ class Approx2D(Approx):
         basis = basis.T.reshape(num_samples, 1, 1, self.num_terms)
         coef = self.table[bucket1_index, bucket2_index]
         return np.sum(coef * basis, axis = -1)
+
+    @staticmethod
+    def _error_kernel(args):
+        # Unpack the arguments.
+        (table_name, power, (input1, input2), polynomial, num_states,
+                num_samples, ((bucket_index1, bucket_index2), data_range)) = args
+        num_terms = polynomial.num_terms
+        # Access the shared memory.
+        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2)
+        table_sm        = SharedMemory(table_name, False)
+        inputs_shape    = (num_samples,)
+        samples_shape   = (num_samples, num_states, num_states)
+        table_shape     = (input1.num_buckets, input2.num_buckets, num_states, num_states, num_terms)
+        input1_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input1_sm.buf)
+        input2_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input2_sm.buf)
+        samples_buf     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
+        table_buf       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
+        # Slice out one chunk of data.
+        num_samples = data_range[1] - data_range[0]
+        input1_buf  = input1_buf[data_range[0] : data_range[1]]
+        input2_buf  = input2_buf[data_range[0] : data_range[1]]
+        exact       = samples_buf[data_range[0] : data_range[1]]
+        # Evaluate the approximation.
+        input1_index, input1_location = input1._get_bucket_location_array(input1_buf)
+        input2_index, input2_location = input2._get_bucket_location_array(input2_buf)
+        basis = Approx2D._polynomial_basis(input1_location, input2_location, polynomial)
+        basis  = basis.reshape(num_samples, 1, 1, num_terms)
+        coef   = table_buf[bucket_index1, bucket_index2, :, :, :]
+        approx = np.sum(coef * basis, axis = -1)
+        # Increase the timestep to 1 ms
+        approx = np.linalg.matrix_power(approx, power)
+        exact  = np.linalg.matrix_power(exact, power)
+        return np.max(np.abs(approx - exact))
