@@ -139,6 +139,8 @@ class MatrixSamples:
     def __del__(self):
         self._free_sm()
 
+_table_name_autoinc = 0
+
 class Approx:
     """ Abstract base class. """
     def __init__(self, samples, polynomial):
@@ -152,10 +154,12 @@ class Approx:
         self.num_buckets    = tuple(inp.num_buckets for inp in self.model.inputs)
 
     def _alloc_table(self):
+        global _table_name_autoinc
         table_shape = self.num_buckets + (self.num_states, self.num_states, self.num_terms)
-        self.table_sm  = SharedMemory(None, True, 8 * np.prod(table_shape))
-        self.table_name = self.table_sm.name
+        self.table_name = f"_matexp_approx_{_table_name_autoinc}"
+        self.table_sm  = SharedMemory(self.table_name, True, 8 * np.prod(table_shape))
         self.table = np.ndarray(table_shape, dtype=np.float64, buffer=self.table_sm.buf)
+        _table_name_autoinc += 1
 
     def __del__(self):
         if self.table_sm is not None:
