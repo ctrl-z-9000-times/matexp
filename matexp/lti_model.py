@@ -34,8 +34,8 @@ class LTI_Model(NMODL_Compiler):
         # Setup shared memory buffers.
         inputs_shape = (self.num_inputs, num_samples)
         deriv_shape = (num_samples, self.num_states, self.num_states)
-        inputs_sm = SharedMemory('_matexp_inputs', True, inputs.nbytes)
-        deriv_sm = SharedMemory('_matexp_deriv', True, 8 * num_samples * self.num_states * self.num_states)
+        inputs_sm = SharedMemory('_matexp_deriv_inputs', True, inputs.nbytes)
+        deriv_sm = SharedMemory('_matexp_deriv_matrix', True, 8 * num_samples * self.num_states * self.num_states)
         inputs_sm_buf = np.ndarray(inputs_shape, dtype=np.float64, buffer=inputs_sm.buf)
         inputs_sm_buf[:,:] = inputs
         try:
@@ -61,8 +61,8 @@ class LTI_Model(NMODL_Compiler):
         derivative = dill.loads(derivative)
         inputs_shape = (num_inputs, num_samples)
         deriv_shape = (num_samples, num_states, num_states)
-        inputs_sm = SharedMemory('_matexp_inputs', False)
-        deriv_sm = SharedMemory('_matexp_deriv', False)
+        inputs_sm = SharedMemory('_matexp_deriv_inputs', False)
+        deriv_sm = SharedMemory('_matexp_deriv_matrix', False)
         inputs = np.ndarray(inputs_shape, dtype=np.float64, buffer=inputs_sm.buf)
         deriv = np.ndarray(deriv_shape, dtype=np.float64, buffer=deriv_sm.buf)
         chunk_size = input_slice.stop - input_slice.start
@@ -99,7 +99,7 @@ class LTI_Model(NMODL_Compiler):
     @staticmethod
     def _compute_expm(args):
         time_step, deriv_shape, input_slice = args
-        deriv_sm = SharedMemory('_matexp_deriv', False)
+        deriv_sm = SharedMemory('_matexp_deriv_matrix', False)
         deriv_matrix = np.ndarray(deriv_shape, dtype=np.float64, buffer=deriv_sm.buf)
         deriv_chunk = deriv_matrix[input_slice, :, :]
         deriv_chunk *= time_step

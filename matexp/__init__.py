@@ -15,6 +15,7 @@ For more information see:
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
 
 from .approx import Approx1D, Approx2D, MatrixSamples
 from .codegen import Codegen
