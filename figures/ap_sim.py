@@ -79,7 +79,7 @@ for seg in soma:
 
 ic = n.IClamp(soma(0.5))
 ic.amp = 0.01
-ic.dur = 800
+ic.dur = 100
 ic.delay = 100
 
 # Measure voltage waveform.
@@ -93,7 +93,7 @@ n.celsius = 37
 n.secondorder = 1
 n.finitialize()
 
-t_stop = 1000 # Do a full run.
+t_stop = 215 # Do a full run.
 if True: t_stop = 115 # Only run the first AP.
 
 while n.t < t_stop:

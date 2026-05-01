@@ -52,19 +52,36 @@ if self.num_inputs == 1:
         for col_idx, col in enumerate(self.state_names):
             # plt.title(col + " ➜ " + row)
             box = axes[row_idx, col_idx]
+            # Top label
             if row_idx == 0:
-                box.set_title("From " + col)
+                box.set_title("From " + col, size=10)
+            # Left label
             if col_idx == 0:
-                box.annotate("To " + row, size=12,
+                box.annotate("To " + row, size=10,
                     xy=(-.05, .5), xycoords='axes fraction', 
                     verticalalignment='center',
                     horizontalalignment='right',
                     rotation=90)
-            if row_idx == 5 and col_idx == 2:
-                box.annotate("mV", size=10,
-                    xy=(1, -.2), xycoords='axes fraction', 
-                    verticalalignment='top',
-                    horizontalalignment='center')
+            # Right label
+            if col_idx == self.num_states - 1:
+                if row_idx == (self.num_states - 1) // 2:
+                    box.annotate("Transition probability", size=10,
+                        xy=(1.2, 0.), xycoords='axes fraction', 
+                        verticalalignment='center',
+                        horizontalalignment='left',
+                        rotation=90)
+            # Bottom label
+            if row_idx == self.num_states - 1:
+                # Single label at bottom
+                if col_idx == (self.num_states - 1) // 2:
+                    if self.input1.name == 'v':
+                        label = "Membrane Potential (mV)"
+                    elif self.input1.name == 'C':
+                        label = "Glutamate concentration (mM)"
+                    box.annotate(label, size=10,
+                        xy=(1, -.25), xycoords='axes fraction', 
+                        verticalalignment='top',
+                        horizontalalignment='center')
             # 
             if isinstance(self.input1, LinearInput):
                 box.plot(input1, exact[:, row_idx, col_idx], **line_params)
