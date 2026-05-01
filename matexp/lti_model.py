@@ -33,7 +33,7 @@ class LTI_Model(NMODL_Compiler):
         # Lazy import to avoid circular dependency.
         from . import _num_threads, _thread_pool, _initialize_thread_pool
         if _thread_pool is None:
-            _thread_pool = _initialize_thread_pool(False)
+            _thread_pool = _initialize_thread_pool(self, False)
         # Setup shared memory buffers.
         inputs_shape = (self.num_inputs, num_samples)
         deriv_shape = (num_samples, self.num_states, self.num_states)
