@@ -185,7 +185,7 @@ class Approx:
         for inp, num_buckets in zip(self.model.inputs, self.num_buckets):
             inp.set_num_buckets(num_buckets)
 
-    def _ensure_enough_exact_samples(self, safety_factor=100):
+    def _ensure_enough_exact_samples(self, safety_factor=10):
         samples_per_bucket = safety_factor * self.polynomial.num_terms
         # Divide the input space into many more buckets to ensure that the
         # samples are uniformly spaced within each bucket.
