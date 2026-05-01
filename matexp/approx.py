@@ -4,7 +4,6 @@ from multiprocessing.shared_memory import SharedMemory
 from itertools import pairwise, repeat
 import math
 import numpy as np
-import scipy.stats
 
 class MatrixSamples:
     def __init__(self, model, verbose=False):

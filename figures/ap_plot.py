@@ -13,8 +13,7 @@ import pickle
 traces = {
     "matexp": {},
     "sparse": {},
-    "approx32": {},
-    "approx64": {},
+    "approx": {},
     "accuracy": {},
 }
 
@@ -42,7 +41,7 @@ titles = [
     "Backwards Euler Method",
     "Approximate Matrix Exponential Method vs Time Step",
     "Approximate Matrix Exponential Method vs Accuracy",]
-methods = ["matexp", "sparse", "approx32", "accuracy"]
+methods = ["matexp", "sparse", "approx", "accuracy"]
 
 t_min, t_max = (3, 3.6)
 
@@ -67,7 +66,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     title = titles[index]
     method = methods[index]
     # 
-    axes.text(t_min+.1, 15, chr(ord("A") + index), ha='left', va='top',
+    axes.text(t_min+.05, 25, chr(ord("A") + index), ha='left', va='top',
               fontsize="large", weight="bold")
     num_traces = len(traces[method])
     for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
@@ -83,7 +82,10 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     # axes.grid(which="major", axis='both', linestyle='solid', linewidth=1)
     axes.set_xlabel("time (ms)")
     axes.set_xlim(xmin=t_min, xmax=t_max)
-    axes.legend()
+    if index == 3:
+        axes.legend(loc='center right')
+    else:
+        axes.legend(loc='best')
 
 fig.savefig("ap_demo.png", dpi=600, bbox_inches='tight')
 if not os.environ.get('NOSHOW', ''): plt.show()

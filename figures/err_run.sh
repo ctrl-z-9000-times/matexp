@@ -7,7 +7,8 @@ exec 2>&1
 
 CELLS=10000
 
-SEED=$RANDOM
+# SEED=$RANDOM
+SEED=12345
 
 # python -c "import numpy; print('\n'.join(str(x) for x in numpy.geomspace(.001, 1, 10)))"
 

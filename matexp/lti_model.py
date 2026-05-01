@@ -1,7 +1,6 @@
 from .nmodl_compiler import NMODL_Compiler
 from multiprocessing.shared_memory import SharedMemory
 from itertools import pairwise, repeat
-import dill
 import numpy as np
 import scipy.linalg
 
@@ -48,8 +47,10 @@ class LTI_Model(NMODL_Compiler):
             boundaries = [num_samples * i // num_chunks for i in range(num_chunks + 1)]
             input_slices = [slice(*pair) for pair in pairwise(boundaries)]
             # 
-            derivative = dill.dumps(self.derivative)
-            args = (repeat(derivative), repeat(self.num_inputs), repeat(self.num_states), repeat(num_samples), input_slices)
+            args = (repeat(self.num_inputs),
+                    repeat(self.num_states),
+                    repeat(num_samples),
+                    input_slices)
             for _ in _thread_pool.map(self._compute_deriv, zip(*args), chunksize=1): pass
             # for _ in map(self._compute_deriv, zip(*args)): pass
             return np.ndarray(deriv_shape, dtype=np.float64, buffer=deriv_sm.buf).copy(), deriv_sm
@@ -60,8 +61,8 @@ class LTI_Model(NMODL_Compiler):
 
     @staticmethod
     def _compute_deriv(args):
-        derivative, num_inputs, num_states, num_samples, input_slice = args
-        derivative = dill.loads(derivative)
+        num_inputs, num_states, num_samples, input_slice = args
+        from . import _derivative
         inputs_shape = (num_inputs, num_samples)
         deriv_shape = (num_samples, num_states, num_states)
         inputs_sm = SharedMemory('matexp_deriv_inputs', False)
@@ -74,7 +75,7 @@ class LTI_Model(NMODL_Compiler):
         for col in range(num_states):
             state.fill(0.)
             state[col, :] = 1.
-            deriv[input_slice, :, col] = np.transpose(derivative(*chunk_inputs, *state))
+            deriv[input_slice, :, col] = np.transpose(_derivative(*chunk_inputs, *state))
         inputs_sm.close()
         deriv_sm.close()
 

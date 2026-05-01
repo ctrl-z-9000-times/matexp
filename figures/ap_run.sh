@@ -32,7 +32,7 @@ max_errors=(
 )
 
 for err in "${max_errors[@]}"; do
-    python ap_sim.py approx .025 $err
+    python ap_sim.py approx .001 $err
 done
 
 python ap_plot.py

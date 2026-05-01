@@ -11,12 +11,6 @@ For more information see:
 
 # Written by David McDougall, 2022-2026
 
-# Disable automatic multithreading
-import os
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
-os.environ['OMP_NUM_THREADS'] = '1'
-
 from .approx import Approx1D, Approx2D, MatrixSamples
 from .codegen import Codegen
 from .inputs import LinearInput, LogarithmicInput
@@ -25,14 +19,17 @@ from .optimizer import Optimize1D, Optimize2D
 from pathlib import Path
 import multiprocessing
 import numpy as np
+import dill
 import time
+import os
 import sys
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
 _num_threads = len(os.sched_getaffinity(0))
 _thread_pool = None
-def _initialize_thread_pool(verbose):
+_derivative  = None
+def _initialize_thread_pool(model, verbose):
     global _thread_pool
     if verbose: print("Worker pool:", _num_threads, 'processes')
     # Manually delete any leftover shared memory files from a previous run.
@@ -42,15 +39,27 @@ def _initialize_thread_pool(verbose):
     else:
         pass # todo
     multiprocessing.set_start_method('spawn')
-    _thread_pool = multiprocessing.Pool(_num_threads)
+    _thread_pool = multiprocessing.Pool(
+            _num_threads,
+            _initialize_worker_process,
+            (dill.dumps(model.derivative),)) # Send the derivative function to every worker.
     return _thread_pool
+
+def _initialize_worker_process(derivative_pickle):
+    # Recv the derivative function.
+    global _derivative
+    _derivative = dill.loads(derivative_pickle)
+    # Disable automatic multithreading
+    os.environ['OPENBLAS_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '1'
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
          outfile=None, verbose=False):
-    _initialize_thread_pool(verbose >= 2)
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
+    _initialize_thread_pool(model, verbose >= 2)
     if   model.num_inputs == 1: OptimizerClass = Optimize1D
     elif model.num_inputs == 2: OptimizerClass = Optimize2D
     else: raise NotImplementedError('too many inputs.')
