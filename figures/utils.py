@@ -83,15 +83,13 @@ def load(mod_files, method, dt=None, c=None, error=None):
         cmd = ["matexp", "-v", "-v", "-dt", str(dt), "-t", str(c)]
         if error:
             cmd.extend(["-e", str(error)])
-        if method.endswith("32"):
-            cmd.extend(["-f", "32"])
         cmd.extend(["--input", "v", "-100", "100"])
         cmd.extend(["--input", "C", "0", "10"])
         cmd.extend(["--log", "C"])
         for in_path in in_dir.iterdir():
             subprocess.run(cmd + [in_path, out_dir], check=True)
     # Compile the NMODL files
-    return build_models(out_dir, method in ["matexp", "approx32", "approx64"])
+    return build_models(out_dir, method in ["matexp", "approx"])
 
 def build_models(mod_dir, nmodl):
     cwd = os.getcwd()

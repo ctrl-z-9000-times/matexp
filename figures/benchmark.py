@@ -17,7 +17,7 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument("OUT_FILE", type=Path)
 parser.add_argument("SEED", type=int, default=None)
-parser.add_argument("METHOD", type=str, choices=["matexp", "approx32", "approx64", "sparse", "pwd"])
+parser.add_argument("METHOD", type=str, choices=["matexp", "approx", "sparse", "pwd"])
 parser.add_argument("TIME_STEP", type=float)
 parser.add_argument("CELLS", type=int)
 parser.add_argument("--error", type=float, default=1e-3)
@@ -44,7 +44,9 @@ del mechanisms['presyn']
 
 import matexp
 v_inp = matexp.LinearInput('v', -100, 100)
+v_inp.set_num_buckets(1)
 c_inp = matexp.LogarithmicInput('C', 0, 10)
+c_inp.set_num_buckets(1, scale=.1)
 all_inputs = [v_inp, c_inp]
 
 # Generate psuedorandom initial states
@@ -58,8 +60,6 @@ for mech, states in sorted(mechanisms.items()):
 # Generate psuedorandom inputs
 initial_inputs = {}
 for input_spec in sorted(all_inputs, key=lambda inp: inp.name):
-    input_spec.scale = 1.
-    input_spec.set_num_buckets(1)
     bucket_values = rng.uniform(0, input_spec.num_buckets, args.CELLS)
     input_values = input_spec.get_input_value(bucket_values)
     initial_inputs[input_spec.name] = input_values

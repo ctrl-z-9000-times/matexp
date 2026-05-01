@@ -29,7 +29,7 @@ wait -f $(jobs -p)
 
 for dt in 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5 1.0
 do
-    python benchmark.py "err_data/approx_$dt" $SEED approx64 $dt $CELLS $MECH --error 1e-4
+    python benchmark.py "err_data/approx_$dt" $SEED approx $dt $CELLS $MECH --error 1e-3
 done
 
 python err_plot.py err_data
