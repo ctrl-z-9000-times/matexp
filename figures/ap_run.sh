@@ -7,10 +7,10 @@ exec 2>&1
 
 time_steps=(
     .001
-    .0125
     .025
-    .0375
     .050
+    .075
+    .100
 )
 
 for dt in "${time_steps[@]}"; do

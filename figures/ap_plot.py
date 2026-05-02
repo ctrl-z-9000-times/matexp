@@ -67,7 +67,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     method = methods[index]
     # 
     axes.text(t_min+.05, 25, chr(ord("A") + index), ha='left', va='top',
-              fontsize="large", weight="bold")
+              size=16, weight="bold")
     num_traces = len(traces[method])
     for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
         assert all(np.isfinite(t))
@@ -84,6 +84,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     axes.set_xlim(xmin=t_min, xmax=t_max)
     if index == 3:
         axes.legend(loc='center right')
+        axes.set_xticks([3.2, 3.4, 3.6])
     else:
         axes.legend(loc='best')
 
