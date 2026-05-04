@@ -24,4 +24,4 @@ MOD_FILES=(
 for file in "${MOD_FILES[@]}"; do
     python gpu_sim.py $MOD_DIR/$file
 done
-# python gpu_plot.py
+python gpu_plot.py

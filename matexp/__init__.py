@@ -17,6 +17,7 @@ from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
 from .optimizer import Optimize1D, Optimize2D
 from pathlib import Path
+from threadpoolctl import ThreadpoolController
 import multiprocessing
 import numpy as np
 import dill
@@ -50,9 +51,7 @@ def _initialize_worker_process(derivative_pickle):
     global _derivative
     _derivative = dill.loads(derivative_pickle)
     # Disable automatic multithreading
-    os.environ['OPENBLAS_NUM_THREADS'] = '1'
-    os.environ['MKL_NUM_THREADS'] = '1'
-    os.environ['OMP_NUM_THREADS'] = '1'
+    ThreadpoolController().limit(limits=1)
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
