@@ -106,5 +106,5 @@ print(f"throughput {num_instances} x")
 # 
 data_file = Path("gpu_data").joinpath(model_name).with_suffix('.csv')
 with open(data_file, 'wt') as file:
-    print(f"{batch_size},rt", file=file)
+    print(f"batch{batch_size},throughput", file=file)
     print(batch_time, num_instances, sep=',', file=file)

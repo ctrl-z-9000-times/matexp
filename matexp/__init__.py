@@ -49,6 +49,10 @@ def _initialize_worker_process(derivative_pickle):
     # Recv the derivative function.
     global _derivative
     _derivative = dill.loads(derivative_pickle)
+    # Disable automatic multithreading
+    os.environ['OPENBLAS_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    os.environ['OMP_NUM_THREADS'] = '1'
 
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,

@@ -42,7 +42,7 @@ def make_nmda():
     assert nmda.model.input2.name == 'v'
     return nmda
 
-fig = plt.figure(f"Log Offset {model.name}", figsize=(7.5, 7.5))
+fig = plt.figure(f"Log Offset {model.name}", figsize=(7.5, 4))
 gs = fig.add_gridspec(1, 2, hspace=0, wspace=0)
 grid = gs.subplots(sharex='all', sharey='all')
 

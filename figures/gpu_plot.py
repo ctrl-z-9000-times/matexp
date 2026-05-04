@@ -9,8 +9,16 @@ import csv
 
 measurements = []
 for file in sorted(Path("gpu_data").iterdir()):
-    method = file.name
+    model = file.stem
     with open(file, 'rt') as f:
-        text = f.read()
+        reader = csv.DictReader(file)
+        for row in reader:
+            measurements.append((model, row["batch1000"], row["throughput"]))
 
 measurements.sort()
+
+with open("gpu_table.csv", 'wt') as file:
+    writer = csv.DictWriter(file, fieldnames=["model", "batch1000", "throughput"])
+    writer.writeheader()
+    for (model, batch1000, throughput) in measurements:
+        writer.writerow({"model": model, "batch1000": batch1000, "throughput": throughput})
