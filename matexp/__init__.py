@@ -79,8 +79,8 @@ def main(nmodl_filename, inputs, time_step, temperature,
 def main_manual(nmodl_filename, inputs, time_step, temperature,
             polynomial, target,
             outfile, verbose=False):
-    _initialize_thread_pool(verbose >= 2)
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
+    _initialize_thread_pool(model, verbose >= 2)
     samples = MatrixSamples(model, (verbose >= 2))
     if   model.num_inputs == 1: ApproxClass = Approx1D
     elif model.num_inputs == 2: ApproxClass = Approx2D

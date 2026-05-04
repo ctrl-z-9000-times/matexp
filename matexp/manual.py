@@ -2,6 +2,7 @@ from matexp import main_manual, LinearInput, LogarithmicInput
 import argparse
 import numpy as np
 import re
+import sys
 
 parser = argparse.ArgumentParser(prog='matexp-manual',
         description='Solves Markov models for NEURON mechanisms')
@@ -30,7 +31,7 @@ computer = parser.add_argument_group('computer specification')
 computer.add_argument('--target', choices=['host','cuda'], default='host',
         help="default: host")
 
-if __name__.endswith('__main__'):
+if __name__.endswith('__main__') or __name__ == 'matexp.manual':
     args = parser.parse_args()
 
     # Create the input data structures.
