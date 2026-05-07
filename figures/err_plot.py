@@ -95,6 +95,12 @@ plt.xlabel("Δt (ms)")
 plt.xlim(min(time_steps), max(time_steps))
 plt.ylim(1e-4, .3)
 
+def method_label(method): 
+    if method == 'sparse':
+        return r"$\it{bE}$ method"
+    elif method == 'approx':
+        return r"$\it{ame}$ method"
+
 # Draw max error for each method
 for method, method_data in error_bounds.items():
     dt_data = []
@@ -103,19 +109,22 @@ for method, method_data in error_bounds.items():
         dt_data.append(dt)
         max_err_data.append(max_err)
     color = cmc.batlow(.0 if method == 'sparse' else .5)
-    plt.loglog(dt_data, max_err_data, label=f'{method} maximum accuracy',
+    plt.loglog(dt_data, max_err_data, label=method_label(method) + " maximum",
                linewidth=3, color=color, zorder=100)
 
 # Draw every accuracy trace (very lightly)
 for method, mech_data in traces.items():
     color = cmc.batlow(.25 if method == 'sparse' else .75)
-    label = f'{method} accuracy'
+    label = method_label(method)
     for mech, (dt, err) in mech_data.items():
         marker = '*' if len(dt) == 1 else None
         plt.loglog(dt, err, marker=marker, color=color, label=label, linewidth=.5)
         label = None
 
-plt.legend()
+# Reorder the legend labels: https://www.statology.org/matplotlib-legend-order/
+handles, labels = plt.gca().get_legend_handles_labels()
+order = [2, 0, 3, 1]
+plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
 plt.savefig(args.DATA_DIR.name + ".png", dpi=600, bbox_inches='tight')
 if not os.environ.get('NOSHOW', ''): plt.show()

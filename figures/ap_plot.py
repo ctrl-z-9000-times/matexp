@@ -39,7 +39,7 @@ gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
 grid = gs.subplots() # RELEASE
 titles = [
     "Matrix Exponential Method",
-    "Backwards Euler Method",
+    "Backward Euler Method",
     "Approximate Matrix Exponential Method vs Time Step",
     "Approximate Matrix Exponential Method vs Accuracy",]
 methods = ["matexp", "sparse", "approx", "accuracy"]
