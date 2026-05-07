@@ -75,11 +75,16 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
         assert all(np.isfinite(t))
         assert all(np.isfinite(v))
         if index in [0, 1, 2]:
-            label = "Δt = %g"%float(value)
+            dt = float(value)
+            label = "Δt = %g"%dt
         elif index == 3:
+            accuracy = float(value)
             label = f"accuracy = {value}"
-        axes.plot(t, v, label=label, color=cmc.batlow(trace_index / 4))
-    # axes.grid(which="major", axis='both', linestyle='solid', linewidth=1)
+        linewidth = 2
+        if index == 3 and accuracy <= .001:
+            linewidth = 1
+        axes.plot(t, v, label=label, color=cmc.batlow(trace_index / 4), linewidth=linewidth)
+    # 
     axes.set_xlim(xmin=t_min, xmax=t_max)
     # Y-Axis labels & ticks
     axes.yaxis.set_tick_params(direction="in")

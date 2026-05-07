@@ -37,7 +37,7 @@ ENDCOMMENT
 INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
 
 NEURON {
-    POINT_PROCESS AMPA13
+    POINT_PROCESS AMPA
     POINTER C
     RANGE C0, C1, C2, C3, C4, D1, D2, D3, D4, O1, O2, O3, O4
     RANGE g, gmax, rb1, rb2, rb3, rb4, Q10_binding, Q10_desensitization, Q10_opening, Q10_unbinding

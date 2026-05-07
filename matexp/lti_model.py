@@ -43,7 +43,7 @@ class LTI_Model(NMODL_Compiler):
         inputs_buf[:,:] = inputs
         try:
             # Break up the input into chunks for multithreading.
-            num_chunks = _num_threads * 3
+            num_chunks = _num_threads * 2
             boundaries = [num_samples * i // num_chunks for i in range(num_chunks + 1)]
             input_slices = [slice(*pair) for pair in pairwise(boundaries)]
             # 
@@ -92,7 +92,7 @@ class LTI_Model(NMODL_Compiler):
                 time_step = self.time_step
             propagator_matrix = np.empty_like(deriv_buf)
             from . import _num_threads, _thread_pool # Lazy import to avoid circular dependency.
-            num_chunks = _num_threads * 3
+            num_chunks = _num_threads * 2
             boundaries = [i * num_samples // num_chunks for i in range(num_chunks + 1)]
             input_slices = [slice(*pair) for pair in pairwise(boundaries)]
             #

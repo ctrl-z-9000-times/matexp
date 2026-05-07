@@ -58,6 +58,8 @@ def _initialize_worker_process(derivative_pickle):
 def main(nmodl_filename, inputs, time_step, temperature,
          error, target,
          outfile=None, verbose=False):
+    if verbose:
+        print("Processing", nmodl_filename)
     # Read and process the NMODL file.
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     _initialize_thread_pool(model, verbose >= 2)

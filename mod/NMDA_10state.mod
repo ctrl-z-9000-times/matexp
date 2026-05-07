@@ -51,7 +51,7 @@ ENDCOMMENT
 INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
 
 NEURON {
-        POINT_PROCESS NMDA_Mg
+        POINT_PROCESS NMDA
         POINTER C
         RANGE U, Cl, D1, D2, O, UMg, ClMg, D1Mg, D2Mg, OMg
         RANGE g, gmax, rb, rmb, rmu, rbMg,rmc1b,rmc1u,rmc2b,rmc2u
