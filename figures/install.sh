@@ -24,8 +24,10 @@ git clone https://github.com/ctrl-z-9000-times/nrn.git
 git clone https://github.com/ctrl-z-9000-times/matexp.git
 git clone https://github.com/LLNL/Caliper.git
 
+# Update PIP? If pip was installed by the OS then this will fail
+# echo password | sudo -S pip install --upgrade pip setuptools wheel
+
 # Download the PyPI dependencies.
-echo password | sudo -S pip install --upgrade pip setuptools wheel
 pip install matplotlib pytest find-libpython jinja2 cmcrameri
 # pip install --user -r nrn/nrn_requirements.txt
 

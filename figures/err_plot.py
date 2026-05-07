@@ -120,6 +120,8 @@ for method, mech_data in traces.items():
         marker = '*' if len(dt) == 1 else None
         plt.loglog(dt, err, marker=marker, color=color, label=label, linewidth=.5)
         label = None
+    # Sanity check
+    print(method, "has", len(mech_data), 'models')
 
 # Reorder the legend labels: https://www.statology.org/matplotlib-legend-order/
 handles, labels = plt.gca().get_legend_handles_labels()

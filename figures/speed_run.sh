@@ -5,6 +5,12 @@ set -ex
 exec > >(tee -i speed_log.txt)
 exec 2>&1
 
+lscpu
+lspci
+if [ -x "$(command -v nvidia-smi)" ]; then
+	nvidia-smi
+fi
+
 rm -rf speed_data
 mkdir -p speed_data
 

@@ -5,8 +5,14 @@ set -ex
 exec > >(tee -i gpu_log.txt)
 exec 2>&1
 
+lscpu
+lspci
+if [ -x "$(command -v nvidia-smi)" ]; then
+    nvidia-smi
+fi
+
 echo password | sudo -S pip install nvidia-cuda-runtime-cu12 nvidia-cuda-nvrtc-cu12
-# pip install cupy-cuda13x
+pip install cupy-cuda12x
 
 mkdir -p gpu_data
 
