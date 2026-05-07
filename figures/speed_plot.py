@@ -38,7 +38,7 @@ for file in sorted(Path("speed_data").iterdir()):
         mechanism_names.add(mechanism)
 
 # Sort the data
-method_names = ["sparse", "matexp", "approx32", "approx64"]
+method_names = ["sparse", "matexp", "approx"]
 mechanism_names = sorted(mechanism_names)
 for method, mech_speed in speed_data.items():
     speed_data[method] = [speed for mech, speed in sorted(mech_speed.items())]

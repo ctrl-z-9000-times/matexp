@@ -19,5 +19,5 @@ CELLS=1000
 SEED=$RANDOM
 CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED sparse $DT $CELLS dedup 2> speed_data/sparse
 CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED matexp $DT $CELLS dedup 2> speed_data/matexp
-CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED approx $DT $CELLS dedup --error 1e-4 2> speed_data/approx64
+CALI_CONFIG=runtime-report,calc.inclusive python benchmark.py /dev/null $SEED approx $DT $CELLS dedup 2> speed_data/approx
 python speed_plot.py $DT $CELLS
