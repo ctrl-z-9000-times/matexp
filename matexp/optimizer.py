@@ -290,7 +290,7 @@ class Optimize2D(Optimizer):
                         cursor = new
                     else:
                         raise RuntimeError("Failed to reach target accuracy (check model stability).")
-            if verbose: print(f'Cursor {cursor.polynomial}, {cursor.num_buckets}')
+            if self.verbose: print(f'Cursor {cursor.polynomial}, {cursor.num_buckets}')
             # Reduce the num_buckets until it fails to meet the target accuracy.
             delta /= 2
             decrease = lambda x: max(1, min(x * (1 - delta), x - 1))
@@ -312,6 +312,6 @@ class Optimize2D(Optimizer):
                     cursor = A
                 else:
                     cursor = min(A, B, key=lambda p: p.error)
-                if verbose: print(f'Cursor {cursor.polynomial}, {cursor.num_buckets}')
+                if self.verbose: print(f'Cursor {cursor.polynomial}, {cursor.num_buckets}')
             delta /= 2
         return cursor
