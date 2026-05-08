@@ -7,7 +7,9 @@ exec > >(tee -i install_log.txt)
 exec 2>&1
 
 export PATH=$PATH:$HOME/.local/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib/
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib/' >> ~/.bashrc
 
 # Install prerequisite software
 echo password | sudo -S apt-get update
@@ -49,7 +51,7 @@ git checkout nrnbuild
 cmake .. \
 	-DPYTHON_EXECUTABLE=$(which python3) \
 	-DCMAKE_INSTALL_PREFIX=$HOME/.local/ \
-	-DNRN_INSTALL_PYTHON_PREFIX=lib/python3.10/site-packages/neuron/ \
+	-DNRN_INSTALL_PYTHON_PREFIX=$(python3 -m site --user-site)/neuron/ \
 	-DNRN_ENABLE_RX3D=OFF \
 	-DNRN_ENABLE_MPI=OFF \
 	-DNRN_ENABLE_CORENEURON=ON \

@@ -108,7 +108,7 @@ for method, method_data in error_bounds.items():
     for dt, (min_err, max_err) in sorted(method_data.items()):
         dt_data.append(dt)
         max_err_data.append(max_err)
-    color = cmc.batlow(.0 if method == 'sparse' else .5)
+    color = cmc.batlow(.0 if method == 'sparse' else .6)
     plt.loglog(dt_data, max_err_data, label=method_label(method) + " maximum",
                linewidth=3, color=color, zorder=100)
 
