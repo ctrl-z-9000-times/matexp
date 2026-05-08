@@ -10,6 +10,7 @@ if [ -x "$(command -v lspci)" ]; then
     lspci
 fi
 if [ -x "$(command -v nvidia-smi)" ]; then
+    nvidia-smi -L
     nvidia-smi
 fi
 
