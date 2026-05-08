@@ -6,7 +6,9 @@ exec > >(tee -i gpu_log.txt)
 exec 2>&1
 
 lscpu
-lspci
+if [ -x "$(command -v lspci)" ]; then
+    lspci
+fi
 if [ -x "$(command -v nvidia-smi)" ]; then
     nvidia-smi
 fi
