@@ -23,6 +23,7 @@ import dill
 import time
 import os
 import sys
+import gc
 
 __all__ = ('main', 'LinearInput', 'LogarithmicInput')
 
@@ -48,6 +49,7 @@ def _initialize_thread_pool(model, verbose):
     else:
         _thread_pool.terminate()
         _thread_pool.join()
+        gc.collect()
     _thread_pool = multiprocessing.Pool(
             _num_threads,
             _initialize_worker_process,
