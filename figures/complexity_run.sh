@@ -5,6 +5,14 @@ set -ex
 exec > >(tee -i complexity_log.txt)
 exec 2>&1
 
+lscpu
+if [ -x "$(command -v lspci)" ]; then
+	lspci
+fi
+if [ -x "$(command -v nvidia-smi)" ]; then
+	nvidia-smi -L
+fi
+
 mkdir -p complexity_data
 
 MOD_DIR=../mod
