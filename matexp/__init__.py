@@ -43,7 +43,8 @@ def _initialize_thread_pool(model, verbose):
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # 
-    multiprocessing.set_start_method('spawn')
+    if _thread_pool is None:
+        multiprocessing.set_start_method('spawn')
     _thread_pool = multiprocessing.Pool(
             _num_threads,
             _initialize_worker_process,
