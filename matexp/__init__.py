@@ -45,6 +45,9 @@ def _initialize_thread_pool(model, verbose):
     # 
     if _thread_pool is None:
         multiprocessing.set_start_method('spawn')
+    else:
+        _thread_pool.terminate()
+        _thread_pool.join()
     _thread_pool = multiprocessing.Pool(
             _num_threads,
             _initialize_worker_process,
