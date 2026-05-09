@@ -11,14 +11,14 @@ measurements = []
 for file in sorted(Path("gpu_data").iterdir()):
     model = file.stem
     with open(file, 'rt') as f:
-        reader = csv.DictReader(file)
+        reader = csv.DictReader(f)
         for row in reader:
             measurements.append((model, row["batch1000"], row["throughput"]))
 
 measurements.sort()
 
-with open("gpu_table.csv", 'wt') as file:
-    writer = csv.DictWriter(file, fieldnames=["model", "batch1000", "throughput"])
+with open("gpu_table.csv", 'wt') as f:
+    writer = csv.DictWriter(f, fieldnames=["model", "batch1000", "throughput"])
     writer.writeheader()
     for (model, batch1000, throughput) in measurements:
         writer.writerow({"model": model, "batch1000": batch1000, "throughput": throughput})
