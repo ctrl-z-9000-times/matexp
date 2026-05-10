@@ -75,7 +75,7 @@ for index, (method, mech_speed) in enumerate(speed_data):
     if method == 'sparse': label = r"$\it{bE}$ method"
     if method == 'matexp': label = r"$\it{me}$ method"
     rects = ax.bar(x + offset, mech_speed, width, label=label, 
-        color=cmc.batlow(index / (len(speed_data)-.5)))
+        color=cmc.batlow(.1 + index / (len(speed_data))))
     multiplier += 1
 
 # 

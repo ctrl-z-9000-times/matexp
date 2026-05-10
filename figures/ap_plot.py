@@ -80,10 +80,14 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
         elif index == 3:
             accuracy = float(value)
             label = f"accuracy = {value}"
-        linewidth = 2
-        if index == 3 and accuracy <= .001:
-            linewidth = 1
-        axes.plot(t, v, label=label, color=cmc.batlow(trace_index / 4), linewidth=linewidth)
+        linestyle = ['solid', 
+                (0, (.7, 1.6)), 
+                (0, (3.6, 1.8)), 
+                (0, (7, 1.8)), 
+                (0, (8, 1.6, .1, 1.6))
+            ][trace_index]
+        axes.plot(t, v, label=label, linestyle=linestyle, linewidth=2, dash_capstyle='round',
+            color=cmc.batlowK(trace_index / (num_traces)))
     # 
     axes.set_xlim(xmin=t_min, xmax=t_max)
     # Y-Axis labels & ticks
@@ -105,9 +109,9 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
             axes.set_xticks([3.0, 3.2, 3.4, 3.6, 3.8, 4.0])
     # Legend
     if index == 3:
-        axes.legend(loc='center right')
+        axes.legend(loc='center right', handlelength=3)
     else:
-        axes.legend(loc='lower right')
+        axes.legend(loc='lower right', handlelength=3)
     # Hide the top & right borders
     if index == 0:
         axes.spines[['top']].set_visible(False)
