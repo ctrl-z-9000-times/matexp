@@ -124,6 +124,9 @@ def _initial_state(array_module, num_states, conserve_sum, num_instances):
     return state
 
 def _measure_speed(f, num_states, inputs, conserve_sum, target):
+    """
+    Returns nanoseconds per instance per time step
+    """
     num_instances = 10 * 1000
     num_repetions = 200
     # 
