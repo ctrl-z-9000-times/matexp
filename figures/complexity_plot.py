@@ -47,9 +47,10 @@ display_names = {
 }
 plt.rcParams.update({'mathtext.default':  'regular' })
 
-linestyle = ['solid', 
+linestyle = [
         (0, (.7, 1.6)), 
         (0, (3.6, 1.8)), 
+        'solid', 
         (0, (7, 1.8)), 
         (0, (8, 1.6, .1, 1.6)),
         (0, (8, 1.6, .1, 1.6, .1, 1.6)),
