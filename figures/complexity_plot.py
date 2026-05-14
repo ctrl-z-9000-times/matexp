@@ -9,7 +9,10 @@ import cmcrameri.cm as cmc
 import numpy as np
 import os
 
-plt.figure('Speed vs Accuracy', figsize=(7.5, 7.5))
+cm = 1/2.54 # Unit conversion
+fontsize = 8.
+plt.rcParams.update({'font.size': fontsize})
+plt.figure('Speed vs Accuracy', figsize=(12*cm, 16*cm))
 
 min_table_size = np.inf
 
@@ -65,12 +68,12 @@ for index, (name, error, speed) in enumerate(all_data):
                 label=display_names[name], color=color)
 
 # plt.title('Speed vs Accuracy')
-plt.ylabel('Time to advance (ms)')
+plt.ylabel('Wall-clock time (ms)')
 plt.xlabel('Accuracy')
 plt.gca().set_yscale("log")
 plt.gca().xaxis.minorticks_off()
 plt.legend(handlelength=4)
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-plt.savefig("complexity.png", dpi=600, bbox_inches='tight')
+plt.savefig("complexity.png", dpi=600, bbox_inches='tight', pad_inches=0.)
 
 if not os.environ.get('NOSHOW', ''): plt.show()

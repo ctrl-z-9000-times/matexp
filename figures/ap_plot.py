@@ -33,7 +33,10 @@ for method, data in traces.items():
     traces[method] = dict(sorted(data.items(), key=lambda pair: float(pair[0])))
 
 # Setup the figure.
-fig = plt.figure("AP Demo", figsize=(7.5, 7.5))
+cm = 1/2.54 # Unit conversion
+fig = plt.figure("AP Demo", figsize=(12*cm, 12*cm), dpi=600)
+fontsize = 8.
+plt.rcParams.update({'font.size': fontsize})
 gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
 # grid = gs.subplots(sharex='all', sharey='all') # DEBUG ONLY (tick labels collide)
 grid = gs.subplots() # RELEASE
@@ -68,7 +71,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     method = methods[index]
     # Sub-figure labels (A, B, C, D)
     axes.text(t_min+.06, 27, chr(ord("A") + index), ha='left', va='top',
-              size=16, weight="bold")
+              size=12, weight="bold")
     # 
     num_traces = len(traces[method])
     for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
@@ -120,5 +123,5 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     elif index == 3:
         axes.spines[['right']].set_visible(False)
 
-fig.savefig("ap_demo.png", dpi=600, bbox_inches='tight')
+fig.savefig("ap_demo.png", bbox_inches='tight', pad_inches=0.)
 if not os.environ.get('NOSHOW', ''): plt.show()

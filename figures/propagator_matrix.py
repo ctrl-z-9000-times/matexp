@@ -29,9 +29,10 @@ g_input     = LogarithmicInput('C', 0, 10) # Glutamate
 all_inputs  = [v_input, g_input]
 self        = LTI_Model(args.model, all_inputs, args.time_step, args.temperature)
 # 
-fig = plt.figure(figsize=(7.5, 7.5))
-fig_title = self.name + " Propagator Matrix Function"
-# fig.suptitle(fig_title)
+cm = 1/2.54 # Unit conversion
+fig = plt.figure(self.name, figsize=(12*cm, 12*cm), dpi=600)
+fontsize = 8.
+plt.rcParams.update({'font.size': fontsize})
 gs = fig.add_gridspec(self.num_states, self.num_states,
                       hspace=0, wspace=0)
 axes = gs.subplots(sharex='col', sharey='row')
@@ -50,14 +51,13 @@ if self.num_inputs == 1:
     # Setup each subplot.
     for row_idx, row in enumerate(self.state_names):
         for col_idx, col in enumerate(self.state_names):
-            # plt.title(col + " ➜ " + row)
             box = axes[row_idx, col_idx]
             # Top label
             if row_idx == 0:
-                box.set_title("From " + col, size=10)
+                box.set_title("From " + col, size=fontsize)
             # Left label
             if col_idx == 0:
-                box.annotate("To " + row, size=10,
+                box.annotate("To " + row, size=fontsize,
                     xy=(-.05, .5), xycoords='axes fraction', 
                     verticalalignment='center',
                     horizontalalignment='right',
@@ -65,8 +65,8 @@ if self.num_inputs == 1:
             # Right label
             if col_idx == self.num_states - 1:
                 if row_idx == (self.num_states - 1) // 2:
-                    box.annotate("Transition probability", size=10,
-                        xy=(1.2, 0.), xycoords='axes fraction', 
+                    box.annotate("Transition probability", size=fontsize,
+                        xy=(1.25, 0.), xycoords='axes fraction', 
                         verticalalignment='center',
                         horizontalalignment='left',
                         rotation=90)
@@ -78,8 +78,8 @@ if self.num_inputs == 1:
                         label = "Membrane Potential (mV)"
                     elif self.input1.name == 'C':
                         label = "Glutamate concentration (mM)"
-                    box.annotate(label, size=10,
-                        xy=(1, -.25), xycoords='axes fraction', 
+                    box.annotate(label, size=fontsize,
+                        xy=(1, -.3), xycoords='axes fraction', 
                         verticalalignment='top',
                         horizontalalignment='center')
             # 
@@ -128,5 +128,5 @@ elif self.num_inputs == 2:
     x = .05
     plt.subplots_adjust(left=x, bottom=x, right=1-x, top=1-x, wspace=0.25, hspace=0.5)
 
-fig.savefig(self.name + ".png", dpi=600, bbox_inches='tight')
+fig.savefig(self.name + ".png", bbox_inches='tight', pad_inches=0.)
 if not os.environ.get('NOSHOW', ''): plt.show()

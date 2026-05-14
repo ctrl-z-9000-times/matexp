@@ -51,11 +51,11 @@ mechanism_names = [
 display_names = {
     'AMPA': 'AMPA',
     'NMDA': 'NMDA',
-    'na11a': 'Nav1.1',
-    'Kv11_11': 'Kv1.1\n11 states',
-    'Kv11_13': 'Kv1.1\n13 states',
-    'Kv11_4': 'Kv1.1\n4 states',
-    'Kv11_6': 'Kv1.1\n6 states',
+    'na11a': 'Na$_{v}$1.1',
+    'Kv11_11': 'K$_{v}$1.1\n11 states',
+    'Kv11_13': 'K$_{v}$1.1\n13 states',
+    'Kv11_4': 'K$_{v}$1.1\n4 states',
+    'Kv11_6': 'K$_{v}$1.1\n6 states',
 }
 for method, mech_speed in speed_data.items():
     speed_data[method] = [speed for mech, speed in sorted(mech_speed.items())]
@@ -67,24 +67,27 @@ x = np.arange(len(mechanism_names))
 width = 1 / (len(speed_data) + 1)  # the width of the bars
 multiplier = 0
 
-fig, ax = plt.subplots(layout='constrained', figsize=(7.5, 7.5))
+cm = 1/2.54 # Unit conversion
+fontsize = 8.
+plt.rcParams.update({'font.size': fontsize})
+fig, ax = plt.subplots(layout='constrained', figsize=(12*cm, 12*cm), dpi=600)
 
 for index, (method, mech_speed) in enumerate(speed_data):
     offset = width * multiplier
-    if method == 'approx': label = r"$\it{ame}$ method"
-    if method == 'sparse': label = r"$\it{bE}$ method"
-    if method == 'matexp': label = r"$\it{me}$ method"
+    if method == 'approx': label = r"AME method"
+    if method == 'sparse': label = r"bE method"
+    if method == 'matexp': label = r"ME method"
     rects = ax.bar(x + offset, mech_speed, width, label=label, 
         color=cmc.batlow(.1 + index / (len(speed_data))))
     multiplier += 1
 
 # 
 ax.set_xticks(x + width * 1.5, [display_names.get(name, name) for name in mechanism_names])
-ax.tick_params(axis='x', length=0)
-ax.set_ylabel('Time to advance (ms)')
+ax.tick_params(axis='x', length=0, labelrotation=45)
+ax.set_ylabel('Wall-clock time (ms)')
 ax.set_yscale("log")
-ax.set_ylim(1e-5, None)
+ax.set_ylim(1e-5, 1)
 ax.legend()
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-plt.savefig("speed_plot.png", dpi=600, bbox_inches='tight')
+plt.savefig("speed_plot.png", bbox_inches='tight', pad_inches=0.)
 if not os.environ.get('NOSHOW', ''): plt.show()

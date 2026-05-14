@@ -89,7 +89,10 @@ for dt, (min_err, max_err) in error_bounds["approx"].items():
     assert np.all(max_err <= 0.001)
 
 # Setup the figure
-plt.figure("Accuracy Comparison")
+cm = 1/2.54 # Unit conversion
+fontsize = 8.
+plt.rcParams.update({'font.size': fontsize})
+plt.figure("Accuracy Comparison", figsize=(8.5*cm, 8.5*cm), dpi=600)
 plt.ylabel("Accuracy")
 plt.xlabel("Δt (ms)")
 plt.xlim(min(time_steps), max(time_steps))
@@ -97,9 +100,9 @@ plt.ylim(1e-4, .3)
 
 def method_label(method): 
     if method == 'sparse':
-        return r"$\it{bE}$ method"
+        return r"bE method"
     elif method == 'approx':
-        return r"$\it{ame}$ method"
+        return r"AME method"
 
 # Draw max error for each method
 for method, method_data in error_bounds.items():
@@ -114,7 +117,7 @@ for method, method_data in error_bounds.items():
 
 # Draw every accuracy trace (very lightly)
 for method, mech_data in traces.items():
-    color = cmc.batlow(.25 if method == 'sparse' else .75)
+    color = cmc.batlow(.2 if method == 'sparse' else .75)
     label = method_label(method)
     for mech, (dt, err) in mech_data.items():
         marker = '*' if len(dt) == 1 else None
@@ -128,5 +131,5 @@ handles, labels = plt.gca().get_legend_handles_labels()
 order = [2, 0, 3, 1]
 plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-plt.savefig(args.DATA_DIR.name + ".png", dpi=600, bbox_inches='tight')
+plt.savefig(args.DATA_DIR.name + ".png", bbox_inches='tight', pad_inches=0.)
 if not os.environ.get('NOSHOW', ''): plt.show()
