@@ -138,18 +138,22 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
         start_event = cupy.cuda.Event()
         end_event   = cupy.cuda.Event()
     # 
+    warmup_state = _initial_state(xp, num_states, conserve_sum, num_instances)
     state = _initial_state(xp, num_states, conserve_sum, num_instances)
     # 
     input_indicies = xp.arange(num_instances, dtype=np.int32)
     elapsed_times = np.empty(num_repetions)
     for trial in range(num_repetions):
         input_arrays = []
+        warmup_arrays = []
         for inp in inputs:
-            input_arrays.append(inp.random(num_instances, np.float64, xp))
-            input_arrays.append(input_indicies)
+            for array_list in [warmup_arrays, input_arrays]:
+                array_list.append(inp.random(num_instances, np.float64, xp))
+                array_list.append(input_indicies)
         _clear_data_cache(xp)
         time.sleep(0) # Try to avoid task switching while running.
         os.sched_yield()
+        f(num_instances, *warmup_arrays, *warmup_state) # Warmup to load the approx into memory.
         if target == 'cuda':
             start_event.record()
             f(num_instances, *input_arrays, *state)
@@ -160,6 +164,10 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
             start_time = time.thread_time_ns()
             f(num_instances, *input_arrays, *state)
             elapsed_times[trial] = time.thread_time_ns() - start_time
+    if False:
+        import matplotlib.pyplot as plt
+        plt.hist(elapsed_times / num_instances, bins=100)
+        plt.show()
     return np.min(elapsed_times) / num_instances
 
 def _clear_data_cache(array_module):
