@@ -261,7 +261,7 @@ class Optimize2D(Optimizer):
                         if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}), runs too slow.\n')
                         return cursor # It's ok to return invalid results BC they won't be used.
                 # Try increasing num_buckets in both dimensions in isolation.
-                b1, b2 = cursor.buckets
+                b1, b2 = cursor.num_buckets
                 if self.verbose: print(f'Increasing {self.model.input1.name} bins:')
                 A = Parameters(self, [increase(b1), b2], polynomial, self.verbose)
                 if self.verbose: print(f'Increasing {self.model.input2.name} bins:')
