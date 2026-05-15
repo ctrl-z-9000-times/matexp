@@ -238,7 +238,7 @@ class Approx:
             x += 1 # Scale the input value into an index.
             x += 1 # Compute the offset into the table.
         x += self.polynomial.num_var_terms # Compute the terms of the polynomial basis.
-        x += matrix_size * self.polynomial.num_var_terms # Evaluate the polynomial approximation.
+        x += matrix_size * self.polynomial.num_terms # Evaluate the polynomial approximation.
         x += matrix_size # Compute the dot product.
         if self.model.conserve_sum is not None:
             x += self.num_states + 1 # Conserve statement.
