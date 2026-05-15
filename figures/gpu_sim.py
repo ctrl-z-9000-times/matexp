@@ -70,6 +70,8 @@ def measure_speed(num_instances, continuous):
     if continuous:
         num_steps = round(1 / time_step)
         cuda_fn(10000, *warmup_inputs, *warmup_state)
+        for _ in range(10):
+            advance()
     else:
         num_steps = 1
     # Perform the measurement.
