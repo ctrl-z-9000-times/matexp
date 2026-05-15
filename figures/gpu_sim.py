@@ -55,6 +55,13 @@ def measure_speed(num_instances, continuous):
         inputs = next(input_iter)
         cuda_fn(num_instances, *inputs, *state)
     # 
+    if continuous:
+        warmup_state = matexp._initial_state(cupy, num_states, conserve_sum=1.0, num_instances=10000)
+        warmup_inputs = []
+        for inp in inputs:
+            warmup_inputs.append(inp.random(10000, np.float64, cupy))
+            warmup_inputs.append(cupy.arange(10000, dtype=np.int32))
+    # 
     start_event = cupy.cuda.Event()
     end_event   = cupy.cuda.Event()
     # Always cold start
@@ -62,9 +69,7 @@ def measure_speed(num_instances, continuous):
     # 
     if continuous:
         num_steps = round(1 / time_step)
-        # Warmup
-        for _ in range(10):
-            advance()
+        cuda_fn(10000, *warmup_inputs, *warmup_state)
     else:
         num_steps = 1
     # Perform the measurement.
