@@ -151,40 +151,29 @@ class Optimizer:
         return search_space, rss_error
 
     def _optimize_polynomial(self, num_buckets, polynomial):
-        self.best = self._optimize_num_buckets(num_buckets, polynomial)
-        self.best.benchmark()
-        experiments = {self.best.polynomial}
-        # Try removing terms from the polynomial.
-        experiment_queue = self.best.polynomial.suggest_remove()
-        while experiment_queue:
-            polynomial = experiment_queue.pop()
-            if polynomial in experiments:
-                continue
-            experiments.add(polynomial)
-            try:
-                new = self._optimize_num_buckets(self.best.num_buckets, polynomial, self.best.runtime)
-            except RuntimeError as error_message:
-                if self.verbose: print(f'Aborting polynomial ({polynomial}) {error_message}')
-                continue
-            new.benchmark()
-            if new.runtime < self.best.runtime:
-                self.best = new
-                if self.verbose: print(f'New best: polynomial ({self.best.polynomial}) bins {self.best.num_buckets}\n')
-                experiment_queue = self.best.polynomial.suggest_remove()
-        # Try adding more terms to the polynomial.
-        experiment_queue = self.best.polynomial.suggest_add()
-        while experiment_queue:
-            polynomial = experiment_queue.pop()
-            if polynomial in experiments:
-                continue
-            experiments.add(polynomial)
-            new = self._optimize_num_buckets(self.best.num_buckets, polynomial, self.best.runtime)
-            new.benchmark()
-            if new.runtime < self.best.runtime:
-                self.best = new
-                if self.verbose: print(f'New best: polynomial ({self.best.polynomial}) bins {self.best.num_buckets}\n')
-                experiment_queue = self.best.polynomial.suggest_add()
-        self.best.set_num_buckets()
+        cursor = self._optimize_num_buckets(num_buckets, polynomial)
+        cursor.benchmark()
+        results = {cursor.polynomial: cursor}
+        while True:
+            queue = cursor.polynomial.suggest_add() + cursor.polynomial.suggest_remove()
+            for polynomial in queue:
+                if polynomial in results:
+                    continue
+                try:
+                    new = self._optimize_num_buckets(cursor.num_buckets, polynomial, cursor.runtime)
+                except RuntimeError as error_message:
+                    if self.verbose: print(f'Aborting polynomial ({polynomial}) {error_message}')
+                    continue
+                new.benchmark()
+                results[new.polynomial] = new
+            self.best = min(results.values(), key=lambda x: x.runtime)
+            if cursor is self.best:
+                self.best.set_num_buckets()
+                return
+            else:
+                cursor = self.best
+                if self.verbose:
+                    print(f'New best: polynomial ({self.best.polynomial}) bins {self.best.num_buckets}\n')
 
 class Optimize1D(Optimizer):
     def init_num_buckets(self):
