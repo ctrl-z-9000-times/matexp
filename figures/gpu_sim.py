@@ -68,7 +68,7 @@ def measure_speed(num_instances, continuous):
     flush_cache()
     # 
     if continuous:
-        num_steps = round(1 / time_step)
+        num_steps = 1
         cuda_fn(10000, *warmup_inputs, *warmup_state)
         for _ in range(10):
             advance()
@@ -95,12 +95,12 @@ for batch_size in [1, 10, 100, 1000, 10000, 100000]:
 batch_size, batch_time = zip(*batch_data)
 # 
 elapsed_ms      = 0
-num_instances   = 1000
+num_instances   = 10000
 multiplier      = .01
 prev_direction  = False
 while True:
     elapsed_ms = measure_speed(num_instances, True)
-    if direction := elapsed_ms < 1:
+    if direction := elapsed_ms < time_step:
         num_instances *= 1 + multiplier
     else:
         num_instances *= 1 - multiplier

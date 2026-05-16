@@ -99,6 +99,15 @@ def main_manual(nmodl_filename, inputs, time_step, temperature,
         print(str(approx).strip())
         residual = approx.measure_residual_error()
         print("Residual error: %.3g"%residual)
+        backend = Codegen(approx, target)
+        runtime = _measure_speed(
+                backend.load(),
+                model.num_states,
+                model.inputs,
+                model.conserve_sum,
+                target)
+        print("Runtime: %.3g ns"%runtime)
+
     _save_model(model, codegen.get_nmodl_text(), outfile)
 
 def _save_model(model, nmodl_text, outfile):
