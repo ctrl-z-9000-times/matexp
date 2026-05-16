@@ -231,16 +231,27 @@ class Optimize2D(Optimizer):
         return [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]]
 
     def _optimize_num_buckets(self, num_buckets, polynomial, max_runtime=None):
-        cursor = Parameters(self, num_buckets, polynomial, self.verbose)
+        cache = {}
+        def make_parameters(num_buckets):
+            num_buckets = tuple(num_buckets)
+            if num_buckets not in cache:
+                cache[num_buckets] = Parameters(self, num_buckets, polynomial, self.verbose)
+            return cache[num_buckets]
+        def remake_parameters(num_buckets):
+            num_buckets = tuple(num_buckets)
+            del cache[num_buckets]
+            return make_parameters(num_buckets)
         # Reduce the num_buckets until the starting cursor does not pass.
+        if self.verbose: print(f'Optimizing input partitions for polynomial {polynomial}. Starting bins {num_buckets}')
+        cursor = make_parameters(num_buckets)
         while cursor.error <= self.max_error:
             if self.verbose: print("Decreasing bins until failure ...")
             num_buckets = list(max(1, b / 2) for b in cursor.num_buckets)
-            cursor = Parameters(self, num_buckets, polynomial, self.verbose)
-        if self.verbose: print(f'Starting cursor {cursor.polynomial} bins {cursor.num_buckets}')
+            cursor = make_parameters(num_buckets)
         # Increase the number of input partitions until it exceeds the target accuracy.
         # Then reduce the increment and re-run from the last failed parameters, until the
         # increment reaches one.
+        if self.verbose: print(f'Cursor {cursor.polynomial} bins {cursor.num_buckets}')
         delta = .5
         increase = lambda x: max(x + 1, round(x * (1 + delta)))
         iteration = 0
@@ -254,14 +265,15 @@ class Optimize2D(Optimizer):
             # Try increasing num_buckets in both dimensions in isolation.
             b1, b2 = cursor.num_buckets
             step_size = max(increase(b1) - b1, increase(b2) - b2)
-            A = Parameters(self, [increase(b1), b2], polynomial, self.verbose)
-            B = Parameters(self, [b1, increase(b2)], polynomial, self.verbose)
+            A = make_parameters([increase(b1), b2])
+            B = make_parameters([b1, increase(b2)])
             # Take whichever experiment yielded better results.
             new = min([A, B], key=lambda p: p.error)
             # Check that the error is decreasing monotonically.
             if new.error >= cursor.error:
-                # Remake the cursor with more samples and recheck
-                cursor = Parameters(self, cursor.num_buckets, cursor.polynomial, self.verbose)
+                # Remake the both parameters with more samples and recheck
+                cursor = remake_parameters(cursor.num_buckets)
+                new    = remake_parameters(new.num_buckets)
                 if new.error >= cursor.error:
                     raise RuntimeError("Failed to reach target accuracy (check model stability).")
             # Advance the cursor
