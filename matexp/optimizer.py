@@ -218,12 +218,6 @@ class Optimize1D(Optimizer):
             cursor = Parameters(self, midpoint, polynomial, self.verbose)
             if cursor.error > self.max_error:
                 min_buckets = cursor.num_buckets1 + 1
-                # Benchmark and early bail-out
-                # if max_runtime is not None:
-                #     cursor.benchmark()
-                #     if cursor.runtime > max_runtime:
-                #         if self.verbose: print(f'Aborting Polynomial ({cursor.polynomial}) runs too slow.\n')
-                #         return cursor # It's ok to return invalid results BC they won't be used.
             else:
                 max_buckets = cursor.num_buckets1
                 max_buckets_parameters = cursor
@@ -238,6 +232,12 @@ class Optimize2D(Optimizer):
 
     def _optimize_num_buckets(self, num_buckets, polynomial, max_runtime=None):
         cursor = Parameters(self, num_buckets, polynomial, self.verbose)
+        # Reduce the num_buckets until the starting cursor does not pass.
+        while cursor.error <= self.max_error:
+            if self.verbose: print("Decreasing bins until failure ...")
+            num_buckets = list(max(1, b / 2) for b in cursor.num_buckets)
+            cursor = Parameters(self, num_buckets, polynomial, self.verbose)
+        if self.verbose: print(f'Starting cursor {cursor.polynomial} bins {cursor.num_buckets}')
         # Increase the number of input partitions until it exceeds the target accuracy.
         # Then reduce the increment and re-run from the last failed parameters, until the
         # increment reaches one.
