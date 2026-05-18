@@ -189,7 +189,7 @@ def _clear_data_cache(array_module, target):
     else:
         l2 = 32e6
     # Read and then write back 32MB of data.
-    big_data = array_module.empty(int(l2), dtype=np.int8)
+    big_data = array_module.empty(int(l2), dtype=np.int64) # 8x safety factor
     big_data += 1
     big_data += 1
     big_data += 1

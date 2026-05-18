@@ -277,7 +277,7 @@ class Optimize2D(Optimizer):
                 if new.error >= cursor.error:
                     raise RuntimeError("Failed to reach target accuracy (check model stability).")
             # Advance the cursor
-            if cursor.error > self.max_error:
+            if new.error > self.max_error:
                 cursor = new
                 if self.verbose: print(f'New cursor {cursor.polynomial} bins {cursor.num_buckets}')
             elif step_size <= 1 or iteration >= 10:
