@@ -11,11 +11,11 @@ For more information see:
 
 # Written by David McDougall, 2022-2026
 
-from .approx import Approx1D, Approx2D, MatrixSamples
+from .approx import Approx, Approx1D, Approx2D, MatrixSamples
 from .codegen import Codegen
 from .inputs import LinearInput, LogarithmicInput
 from .lti_model import LTI_Model
-from .optimizer import Optimize1D, Optimize2D
+from .optimizer import Parameters, Optimize1D, Optimize2D
 from pathlib import Path
 import multiprocessing
 import numpy as np
@@ -99,9 +99,8 @@ def main_manual(nmodl_filename, inputs, time_step, temperature,
         print(str(approx).strip())
         residual = approx.measure_residual_error()
         print("Residual error: %.3g"%residual)
-        backend = Codegen(approx, target)
         runtime = _measure_speed(
-                backend.load(),
+                codegen.load(),
                 model.num_states,
                 model.inputs,
                 model.conserve_sum,
@@ -132,11 +131,30 @@ def _initial_state(array_module, num_states, conserve_sum, num_instances):
             array *= correction_factor
     return state
 
-def _measure_speed(f, num_states, inputs, conserve_sum, target):
+def measure_speed(approx, target, num_warmups=10000, num_instances=10000, num_repetions=200):
+    backend = Codegen(approx, target)
+    model = approx.model
+    if target is None:
+        target = model.backend.target
+    function = backend.load()
+    # 
+    return _measure_speed(function,
+            model.num_states,
+            model.inputs,
+            model.conserve_sum,
+            target,
+            num_warmups=num_warmups,
+            num_instances=num_instances,
+            num_repetions=num_repetions)
+
+def _measure_speed(f, num_states, inputs, conserve_sum, target,
+                    num_warmups=10000, num_instances=10000, num_repetions=200):
     """
     Returns nanoseconds per instance per time step
     """
-    num_repetions = 200
+    num_warmups   = round(num_warmups)
+    num_instances = round(num_instances)
+    num_repetions = round(num_repetions)
     # 
     if target == 'host':
         xp = np
@@ -146,14 +164,14 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
         start_event = cupy.cuda.Event()
         end_event   = cupy.cuda.Event()
     # 
-    def measure_inner(num_instances):
-        state = _initial_state(xp, num_states, conserve_sum, num_instances)
-        input_indicies = xp.arange(num_instances, dtype=np.int32)
+    def measure_inner(batch_size):
+        state = _initial_state(xp, num_states, conserve_sum, batch_size)
+        input_indicies = xp.arange(batch_size, dtype=np.int32)
         elapsed_times = np.empty(num_repetions)
         for trial in range(num_repetions):
             input_arrays = []
             for inp in inputs:
-                input_arrays.append(inp.random(num_instances, np.float64, xp))
+                input_arrays.append(inp.random(batch_size, np.float64, xp))
                 input_arrays.append(input_indicies)
             _clear_data_cache(xp, target)
             # Try to avoid task switching while running.
@@ -161,23 +179,26 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
             os.sched_yield()
             if target == 'cuda':
                 start_event.record()
-                f(num_instances, *input_arrays, *state)
+                f(batch_size, *input_arrays, *state)
                 end_event.record()
                 end_event.synchronize()
                 elapsed_times[trial] = 1e6 * cupy.cuda.get_elapsed_time(start_event, end_event)
             elif target == 'host':
                 start_time = time.thread_time_ns()
-                f(num_instances, *input_arrays, *state)
+                f(batch_size, *input_arrays, *state)
                 elapsed_times[trial] = time.thread_time_ns() - start_time
         if False:
             import matplotlib.pyplot as plt
-            plt.hist(elapsed_times / num_instances, bins=100)
+            plt.hist(elapsed_times / batch_size, bins=100)
             plt.show()
         return np.min(elapsed_times)
     # 
-    batch10k = measure_inner(10000)
-    batch20k = measure_inner(20000)
-    return (batch20k - batch10k) / 10000
+    if num_warmups > 0:
+        t_warmup = measure_inner(num_warmups)
+    else:
+        t_warmup = 0
+    t_batch  = measure_inner(num_warmups + num_instances)
+    return (t_batch - t_warmup) / num_instances
 
 def _clear_data_cache(array_module, target):
     if target == 'cuda':

@@ -61,7 +61,7 @@ class Parameters:
                 self.model.num_states,
                 self.model.inputs,
                 self.model.conserve_sum,
-                self.optimizer.target)
+                self.backend.target)
         self.table_size = self.approx.table.nbytes
         if self.verbose: print(f"Result: {round(self.runtime, 3)} ns/Δt\n")
 
