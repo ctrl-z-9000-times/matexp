@@ -136,7 +136,6 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
     """
     Returns nanoseconds per instance per time step
     """
-    num_instances = 10 * 1000
     num_repetions = 200
     # 
     if target == 'host':
@@ -147,43 +146,50 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target):
         start_event = cupy.cuda.Event()
         end_event   = cupy.cuda.Event()
     # 
-    warmup_state = _initial_state(xp, num_states, conserve_sum, num_instances)
-    state = _initial_state(xp, num_states, conserve_sum, num_instances)
+    def measure_inner(num_instances):
+        state = _initial_state(xp, num_states, conserve_sum, num_instances)
+        input_indicies = xp.arange(num_instances, dtype=np.int32)
+        elapsed_times = np.empty(num_repetions)
+        for trial in range(num_repetions):
+            input_arrays = []
+            for inp in inputs:
+                input_arrays.append(inp.random(num_instances, np.float64, xp))
+                input_arrays.append(input_indicies)
+            _clear_data_cache(xp, target)
+            # Try to avoid task switching while running.
+            time.sleep(0)
+            os.sched_yield()
+            if target == 'cuda':
+                start_event.record()
+                f(num_instances, *input_arrays, *state)
+                end_event.record()
+                end_event.synchronize()
+                elapsed_times[trial] = 1e6 * cupy.cuda.get_elapsed_time(start_event, end_event)
+            elif target == 'host':
+                start_time = time.thread_time_ns()
+                f(num_instances, *input_arrays, *state)
+                elapsed_times[trial] = time.thread_time_ns() - start_time
+        if False:
+            import matplotlib.pyplot as plt
+            plt.hist(elapsed_times / num_instances, bins=100)
+            plt.show()
+        return np.min(elapsed_times)
     # 
-    input_indicies = xp.arange(num_instances, dtype=np.int32)
-    elapsed_times = np.empty(num_repetions)
-    for trial in range(num_repetions):
-        input_arrays = []
-        warmup_arrays = []
-        for inp in inputs:
-            for array_list in [warmup_arrays, input_arrays]:
-                array_list.append(inp.random(num_instances, np.float64, xp))
-                array_list.append(input_indicies)
-        _clear_data_cache(xp)
-        time.sleep(0) # Try to avoid task switching while running.
-        os.sched_yield()
-        f(num_instances, *warmup_arrays, *warmup_state) # Warmup to load the approx into memory.
-        if target == 'cuda':
-            start_event.record()
-            f(num_instances, *input_arrays, *state)
-            end_event.record()
-            end_event.synchronize()
-            elapsed_times[trial] = 1e6 * cupy.cuda.get_elapsed_time(start_event, end_event)
-        elif target == 'host':
-            start_time = time.thread_time_ns()
-            f(num_instances, *input_arrays, *state)
-            elapsed_times[trial] = time.thread_time_ns() - start_time
-    if False:
-        import matplotlib.pyplot as plt
-        plt.hist(elapsed_times / num_instances, bins=100)
-        plt.show()
-    return np.min(elapsed_times) / num_instances
+    batch10k = measure_inner(10000)
+    batch20k = measure_inner(20000)
+    return (batch20k - batch10k) / 10000
 
-def _clear_data_cache(array_module):
-    # Read and then write back 32MB of data. Assuming that the CPU is using a
-    # least-recently-used replacement policy, touching every piece of data once
-    # should be sufficient to put it into the cache.
-    big_data = array_module.empty(int(32e6 / 8), dtype=np.int64)
+def _clear_data_cache(array_module, target):
+    if target == 'cuda':
+        import cupy
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+        props = cupy.cuda.runtime.getDeviceProperties(0)
+        l2 = props['l2CacheSize']
+    else:
+        l2 = 32e6
+    # Read and then write back 32MB of data.
+    big_data = array_module.empty(int(l2), dtype=np.int8)
     big_data += 1
     big_data += 1
     big_data += 1
