@@ -231,6 +231,7 @@ class Optimize2D(Optimizer):
         return [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [3, 0], [0, 3]]
 
     def _optimize_num_buckets(self, num_buckets, polynomial, max_runtime=None):
+        num_buckets = [1, 1]
         cache = {}
         def make_parameters(num_buckets):
             num_buckets = tuple(num_buckets)
@@ -241,13 +242,6 @@ class Optimize2D(Optimizer):
             num_buckets = tuple(num_buckets)
             del cache[num_buckets]
             return make_parameters(num_buckets)
-        # Reduce the num_buckets until the starting cursor does not pass.
-        if self.verbose: print(f'Optimizing input partitions for polynomial {polynomial}. Starting bins {num_buckets}')
-        cursor = make_parameters(num_buckets)
-        while cursor.error <= self.max_error:
-            if self.verbose: print("Decreasing bins until failure ...")
-            num_buckets = list(max(1, b / 2) for b in cursor.num_buckets)
-            cursor = make_parameters(num_buckets)
         # Increase the number of input partitions until it exceeds the target accuracy.
         # Then reduce the increment and re-run from the last failed parameters, until the
         # increment reaches one.
