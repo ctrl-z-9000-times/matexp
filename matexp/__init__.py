@@ -188,6 +188,12 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target,
                 f(batch_size, *input_arrays, *state)
                 elapsed_times[trial] = time.thread_time_ns() - start_time
         if False:
+            print('Samples', len(elapsed_times))
+            print('min   ', np.min(elapsed_times))
+            print('median', np.median(elapsed_times))
+            print('mean  ', np.mean(elapsed_times))
+            print('std   ', np.std(elapsed_times))
+            print('max   ', np.max(elapsed_times))
             import matplotlib.pyplot as plt
             plt.hist(elapsed_times / batch_size, bins=100)
             plt.show()
