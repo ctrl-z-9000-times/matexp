@@ -131,7 +131,7 @@ def _initial_state(array_module, num_states, conserve_sum, num_instances):
             array *= correction_factor
     return state
 
-def measure_speed(approx, target, num_warmups=10000, num_instances=10000, num_repetions=200):
+def measure_speed(approx, target, num_warmups=10000, num_instances=100000, num_repetions=10):
     backend = Codegen(approx, target)
     model = approx.model
     if target is None:
@@ -148,7 +148,7 @@ def measure_speed(approx, target, num_warmups=10000, num_instances=10000, num_re
             num_repetions=num_repetions)
 
 def _measure_speed(f, num_states, inputs, conserve_sum, target,
-                    num_warmups=10000, num_instances=10000, num_repetions=200):
+                    num_warmups=10000, num_instances=100000, num_repetions=10):
     """
     Returns nanoseconds per instance per time step
     """
