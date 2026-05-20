@@ -92,7 +92,7 @@ for dt, (min_err, max_err) in error_bounds["approx"].items():
 cm = 1/2.54 # Unit conversion
 fontsize = 8.
 plt.rcParams.update({'font.size': fontsize})
-plt.figure("Accuracy Comparison", figsize=(8.5*cm, 8.5*cm), dpi=600)
+plt.figure("Accuracy Comparison", figsize=(8.5*cm, 8.5*cm), dpi=300)
 plt.ylabel("Accuracy")
 plt.xlabel("Δt (ms)")
 plt.xlim(min(time_steps), max(time_steps))
@@ -100,9 +100,9 @@ plt.ylim(1e-4, .3)
 
 def method_label(method): 
     if method == 'sparse':
-        return r"bE method"
+        return r"bE Method"
     elif method == 'approx':
-        return r"AME method"
+        return r"AME Method"
 
 # Draw max error for each method
 for method, method_data in error_bounds.items():
@@ -112,7 +112,7 @@ for method, method_data in error_bounds.items():
         dt_data.append(dt)
         max_err_data.append(max_err)
     color = cmc.batlow(.0 if method == 'sparse' else .6)
-    plt.loglog(dt_data, max_err_data, label=method_label(method) + " maximum",
+    plt.loglog(dt_data, max_err_data, label=method_label(method) + " Maximum",
                linewidth=3, color=color, zorder=100)
 
 # Draw every accuracy trace (very lightly)

@@ -30,9 +30,9 @@ all_inputs  = [v_input, g_input]
 self        = LTI_Model(args.model, all_inputs, args.time_step, args.temperature)
 # 
 cm = 1/2.54 # Unit conversion
-fig = plt.figure(self.name, figsize=(12*cm, 12*cm), dpi=600)
+fig = plt.figure(self.name, figsize=(8.5*cm, 8.5*cm), dpi=300)
 fontsize = 8.
-plt.rcParams.update({'font.size': fontsize})
+plt.rcParams.update({'font.size': 6})
 gs = fig.add_gridspec(self.num_states, self.num_states,
                       hspace=0, wspace=0)
 axes = gs.subplots(sharex='col', sharey='row')
@@ -54,7 +54,12 @@ if self.num_inputs == 1:
             box = axes[row_idx, col_idx]
             # Top label
             if row_idx == 0:
-                box.set_title("From " + col, size=fontsize)
+                # box.set_title("From " + col, size=fontsize)
+                box.annotate("From " + col, size=fontsize,
+                    xy=(.5, 1.05), xycoords='axes fraction', 
+                    verticalalignment='bottom',
+                    horizontalalignment='center',
+                    rotation=30)
             # Left label
             if col_idx == 0:
                 box.annotate("To " + row, size=fontsize,
@@ -65,8 +70,8 @@ if self.num_inputs == 1:
             # Right label
             if col_idx == self.num_states - 1:
                 if row_idx == (self.num_states - 1) // 2:
-                    box.annotate("Transition probability", size=fontsize,
-                        xy=(1.25, 0.), xycoords='axes fraction', 
+                    box.annotate("Transition Probability", size=fontsize,
+                        xy=(1.30, 0.), xycoords='axes fraction', 
                         verticalalignment='center',
                         horizontalalignment='left',
                         rotation=90)
@@ -79,7 +84,7 @@ if self.num_inputs == 1:
                     elif self.input1.name == 'C':
                         label = "Glutamate concentration (mM)"
                     box.annotate(label, size=fontsize,
-                        xy=(1, -.3), xycoords='axes fraction', 
+                        xy=(1, -.35), xycoords='axes fraction', 
                         verticalalignment='top',
                         horizontalalignment='center')
             # 

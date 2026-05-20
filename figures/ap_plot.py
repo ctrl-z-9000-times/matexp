@@ -34,7 +34,7 @@ for method, data in traces.items():
 
 # Setup the figure.
 cm = 1/2.54 # Unit conversion
-fig = plt.figure("AP Demo", figsize=(12*cm, 12*cm), dpi=600)
+fig = plt.figure("AP Demo", figsize=(18*cm, 18*cm), dpi=300)
 fontsize = 8.
 plt.rcParams.update({'font.size': fontsize})
 gs = fig.add_gridspec(2, 2, hspace=0, wspace=0)
@@ -83,20 +83,15 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
         elif index == 3:
             accuracy = float(value)
             label = f"accuracy = {value}"
-        linestyle = ['solid', 
-                (0, (.7, 1.6)), 
-                (0, (3.6, 1.8)), 
-                (0, (7, 1.8)), 
-                (0, (8, 1.6, .1, 1.6))
-            ][trace_index]
-        axes.plot(t, v, label=label, linestyle=linestyle, linewidth=2, dash_capstyle='round',
-            color=cmc.batlowK(trace_index / (num_traces)))
+        linestyle = 'dashed' if trace_index == 1 else 'solid'
+        axes.plot(t, v, label=label, linestyle=linestyle, linewidth=2,
+            color=cmc.batlow(trace_index / (num_traces)))
     # 
     axes.set_xlim(xmin=t_min, xmax=t_max)
     # Y-Axis labels & ticks
     axes.yaxis.set_tick_params(direction="in")
     if col == 0:
-        axes.set_ylabel("Membrane potential (mV)")
+        axes.set_ylabel("Membrane Potential (mV)")
         axes.set_yticks([-60, -40, -20, 0, 20])
     elif col == 1:
         axes.set_yticks([-60, -40, -20, 0, 20], labels=[""]*5)
@@ -105,7 +100,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     if row == 0:
         axes.set_xticks([3.0, 3.2, 3.4, 3.6, 3.8, 4.0], labels=[""]*6)
     elif row == 1:
-        axes.set_xlabel("time (ms)")
+        axes.set_xlabel("Time (ms)")
         if col == 0:
             axes.set_xticks([3.0, 3.2, 3.4, 3.6, 3.8])
         else:
