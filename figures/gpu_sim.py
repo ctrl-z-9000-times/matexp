@@ -34,11 +34,10 @@ print("warmups,instances,elapsed_ms", file=data_file)
 num_warmups   =  100 * 1000
 num_instances = 1000 * 1000
 num_repetitions = 200
-for trial in range(num_repetitions):
-    elapsed_ns = matexp.measure_speed(parameters.approx, args.target,
-                num_warmups=num_warmups, num_instances=num_instances, num_repetitions=1)
-    elapsed_ms = elapsed_ns / 1e6
-    print(f"{num_warmups},{num_instances},{elapsed_ms}")
-    print(f"{num_warmups},{num_instances},{elapsed_ms}", file=data_file)
+elapsed_ns = matexp.measure_speed(parameters.approx, args.target,
+            num_warmups=num_warmups, num_instances=num_instances, num_repetitions=num_repetitions)
+elapsed_ms = elapsed_ns / 1e6
+print(f"{num_warmups},{num_instances},{elapsed_ms}")
+print(f"{num_warmups},{num_instances},{elapsed_ms}", file=data_file)
 # 
 data_file.close()
