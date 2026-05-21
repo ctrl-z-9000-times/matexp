@@ -244,7 +244,7 @@ class Optimize2D(Optimizer):
         # Increase the number of input partitions until it exceeds the target accuracy.
         # Then reduce the increment and re-run from the last failed parameters, until the
         # increment reaches one.
-        num_buckets = [1, 1]
+        num_buckets = [4, 4]
         if self.verbose: print(f'Starting cursor {polynomial} bins {num_buckets}')
         cursor = make_parameters(num_buckets) 
         delta = .5

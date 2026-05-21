@@ -416,6 +416,13 @@ class Approx2D(Approx):
         basis  = basis.reshape(num_samples, 1, 1, num_terms)
         coef   = table_buf[bucket_index1, bucket_index2, :, :, :]
         approx = np.sum(coef * basis, axis = -1)
+        # Conserve the sum of states. Note: although this step is not part of
+        # the runtime calculation, it's included here for program stability.
+        # There is a particular failure mode of polynomial approximations,
+        # where a high degree polynomial which fits one region at the expense
+        # of another region, reaches extreme values in the bad regions.
+        approx = np.clip(approx, 0, 1)
+        approx /= np.sum(approx, axis = 1, keepdims=True)
         # Increase the timestep to 1 ms
         approx = np.linalg.matrix_power(approx, power)
         exact  = np.linalg.matrix_power(exact, power)

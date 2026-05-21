@@ -70,8 +70,8 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     title = titles[index]
     method = methods[index]
     # Sub-figure labels (A, B, C, D)
-    axes.text(t_min+.06, 27, chr(ord("A") + index), ha='left', va='top',
-              size=12, weight="bold")
+    # axes.text(t_min+.06, 27, chr(ord("A") + index), ha='left', va='top',
+    #           size=12, weight="bold")
     # 
     num_traces = len(traces[method])
     for trace_index, (value, (t, v)) in enumerate(traces[method].items()):
