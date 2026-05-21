@@ -56,12 +56,19 @@ class Parameters:
                 self.approx,
                 self.optimizer.target)
         from . import _measure_speed # Import just before using to avoid circular imports.
+        num_warmups   =  10 * 1000
+        num_instances = 100 * 1000
+        if self.backend.target == 'cuda':
+            num_warmups   *= 10
+            num_instances *= 10
         self.runtime = _measure_speed(
                 self.backend.load(),
                 self.model.num_states,
                 self.model.inputs,
                 self.model.conserve_sum,
-                self.backend.target)
+                self.backend.target,
+                num_warmups=num_warmups,
+                num_instances=num_instances)
         self.table_size = self.approx.table.nbytes
         if self.verbose: print(f"Result: {round(self.runtime, 3)} ns/Δt\n")
 
