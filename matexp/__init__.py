@@ -131,7 +131,7 @@ def _initial_state(array_module, num_states, conserve_sum, num_instances):
             array *= correction_factor
     return state
 
-def measure_speed(approx, target, num_warmups=10000, num_instances=100000, num_repetions=10):
+def measure_speed(approx, target, num_warmups=10000, num_instances=100000, num_repetitions=10):
     backend = Codegen(approx, target)
     model = approx.model
     if target is None:
@@ -145,16 +145,16 @@ def measure_speed(approx, target, num_warmups=10000, num_instances=100000, num_r
             target,
             num_warmups=num_warmups,
             num_instances=num_instances,
-            num_repetions=num_repetions)
+            num_repetitions=num_repetitions)
 
 def _measure_speed(f, num_states, inputs, conserve_sum, target,
-                    num_warmups=10000, num_instances=100000, num_repetions=10):
+                    num_warmups=10000, num_instances=100000, num_repetitions=10):
     """
     Returns nanoseconds per instance per time step
     """
     num_warmups   = round(num_warmups)
     num_instances = round(num_instances)
-    num_repetions = round(num_repetions)
+    num_repetitions = round(num_repetitions)
     # 
     if target == 'host':
         xp = np
@@ -167,8 +167,8 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target,
     def measure_inner(batch_size):
         state = _initial_state(xp, num_states, conserve_sum, batch_size)
         input_indicies = xp.arange(batch_size, dtype=np.int32)
-        elapsed_times = np.empty(num_repetions)
-        for trial in range(num_repetions):
+        elapsed_times = np.empty(num_repetitions)
+        for trial in range(num_repetitions):
             input_arrays = []
             for inp in inputs:
                 input_arrays.append(inp.random(batch_size, np.float64, xp))
