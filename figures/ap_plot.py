@@ -82,7 +82,7 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
             label = "Δt = %g"%dt
         elif index == 3:
             accuracy = float(value)
-            label = f"accuracy = {value}"
+            label = f"Accuracy = {value}"
         linestyle = 'dashed' if trace_index == 1 else 'solid'
         axes.plot(t, v, label=label, linestyle=linestyle, linewidth=2,
             color=cmc.batlow(trace_index / (num_traces)))

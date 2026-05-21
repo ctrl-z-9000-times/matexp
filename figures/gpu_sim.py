@@ -12,7 +12,7 @@ sys.modules['__main__'] = sys.modules['matexp']
 # 
 parser = argparse.ArgumentParser()
 parser.add_argument("MOD_FILE", type=Path)
-parser.add_argument("--target", type=str, options=["host", "cuda"], default="cuda")
+parser.add_argument("--target", type=str, choices=["host", "cuda"], default="cuda")
 args = parser.parse_args()
 # 
 time_step       = .025
@@ -33,9 +33,9 @@ print("warmups,instances,elapsed_ms", file=data_file)
 # 
 num_warmups   =  100 * 1000
 num_instances = 1000 * 1000
-repetitons    = 200
+num_repetitions = 200
 elapsed_ns = matexp.measure_speed(parameters.approx, args.target,
-            num_warmups=num_warmups, num_instances=num_instances, repetitons=repetitons)
+            num_warmups=num_warmups, num_instances=num_instances, num_repetitions=num_repetitions)
 # 
 elapsed_ms = elapsed_ns / 1e6
 print(f"{num_warmups},{num_instances},{elapsed_ms}")
