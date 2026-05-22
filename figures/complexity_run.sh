@@ -6,6 +6,7 @@ exec > >(tee -i complexity_log.txt)
 exec 2>&1
 
 lscpu
+cat /proc/meminfo
 if [ -x "$(command -v lspci)" ]; then
 	lspci
 fi

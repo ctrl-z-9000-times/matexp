@@ -27,6 +27,7 @@ def speed_vs_accuracy(file, errors, time_step=0.025, temperature=37.0):
         mult = num_multiplications(approx)
         with open(output, 'at') as f:
             f.write(f"{error},{speed},{size},{mult}\n")
+        del approx
 
 def build_approximation(file, time_step, temperature, error):
     voltage_input = matexp.LinearInput('v', -100, 100)
