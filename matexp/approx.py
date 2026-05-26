@@ -168,8 +168,8 @@ class Approx:
                     repeat(self.polynomial),
                     repeat(len(self.samples)),
                     iter(self.samples))
-        rss_sum = sum(map(self._table_kernel, args)) # Single threaded
-        # rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
+        # rss_sum = sum(map(self._table_kernel, args)) # Single threaded
+        rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
         self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def __del__(self):
@@ -213,7 +213,7 @@ class Approx:
                     repeat(self.polynomial),
                     repeat(self.num_states),
                     repeat(len(self.samples)),
-                    self.samples)
+                    iter(self.samples))
         # return max(map(self._error_kernel, args)) # Single threaded
         return max(_thread_pool.map(self._error_kernel, list(args), chunksize=1)) # Multithreaded
 
@@ -375,6 +375,42 @@ class Approx2D(Approx):
         table_buf[bucket_index1, bucket_index2, :, :, :] = coef
         return np.sum(rss)
 
+    @staticmethod
+    def _table_kernel2(args):
+        # Unpack the arguments.
+        (table_name, input1, input2, num_states, polynomial,
+                num_samples, ((bucket_index1, bucket_index2,), data_range)) = args
+        num_terms = polynomial.num_terms
+        # Setup the shared memory.
+        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2)
+        table_sm        = SharedMemory(table_name, False)
+        inputs_shape    = (num_samples,)
+        samples_shape   = (num_samples, num_states, num_states)
+        table_shape     = (input1.num_buckets, input2.num_buckets, num_states, num_states, num_terms)
+        input1_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input1_sm.buf)
+        input2_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input2_sm.buf)
+        samples_buf     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
+        table_buf       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
+        # Slice out the current bucket's samples.
+        num_samples = data_range[1] - data_range[0]
+        input1_buf  = input1_buf[data_range[0] : data_range[1]]
+        input2_buf  = input2_buf[data_range[0] : data_range[1]]
+        samples_buf = samples_buf[data_range[0] : data_range[1]]
+        # Scale the inputs into the range [0,1].
+        input1_locations = input1.get_bucket_value(input1_buf) - bucket_index1
+        input2_locations = input2.get_bucket_value(input2_buf) - bucket_index2
+        #
+        A = Approx2D._polynomial_basis(input1_locations, input2_locations, polynomial)
+        # Process the matrix cells one at a time?
+        rss = 0
+        for s1 in range(num_states):
+            for s2 in range(num_states):
+                B = samples_buf[:, s1, s2]
+                coef, residual = np.linalg.lstsq(A, B, rcond=None)[:2]
+                table_buf[bucket_index1, bucket_index2, s1, s2, :] = coef
+                rss += np.sum(residual)
+        return rss
+
     def approximate_matrix(self, input1, input2):
         assert len(input1.shape) == 1 and input1.shape == input2.shape
         num_samples = len(input1)
@@ -420,7 +456,8 @@ class Approx2D(Approx):
         # the runtime calculation, it's included here for program stability.
         # There is a particular failure mode of polynomial approximations,
         # where a high degree polynomial which fits one region at the expense
-        # of another region, reaches extreme values in the bad regions.
+        # of another region, reaches extreme values in the bad regions, resulting
+        # in errors greater than 1 and a non-monotonic error landscape.
         approx = np.clip(approx, 0, 1)
         approx /= np.sum(approx, axis = 1, keepdims=True)
         # Increase the timestep to 1 ms

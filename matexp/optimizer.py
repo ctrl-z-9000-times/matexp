@@ -252,7 +252,7 @@ class Optimize2D(Optimizer):
         # Then reduce the increment and re-run from the last failed parameters, until the
         # increment reaches one.
         num_buckets = [4, 4]
-        if self.verbose: print(f'Starting cursor {polynomial} bins {num_buckets}')
+        if self.verbose: print(f'Start optimize num buckets')
         cursor = make_parameters(num_buckets) 
         delta = .5
         increase = lambda x: max(x + 1, round(x * (1 + delta)))
