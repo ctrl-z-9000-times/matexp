@@ -20,6 +20,8 @@ sim.add_argument('-t', '--temperature', type=float, default=37.0,
         help="degrees celsius, default: 37")
 sim.add_argument('-p', '--polynomial', type=str, required=True,
         help="polynomial form, ex: v^2+v+1")
+sim.add_argument('-s', '--samples', type=int, default=100,
+        help="minimum sample count safety factor")
 inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=4, metavar=('NAME', 'MIN', 'MAX', 'BINS'),
@@ -49,11 +51,8 @@ if __name__.endswith('__main__') or __name__ == 'matexp.manual':
         if name not in inputs:
             parser.error(f'Argument "--log {name}" does not match any input name.')
 
-    # Set this module as the __main__ module, in case run from /bin/matexp-manual
-    sys.modules['__main__'] = sys.modules[__name__] # Fixes multiprocessing issues, do not remove.
-
     main_manual(args.nmodl_filename, list(inputs.values()), args.time_step, args.temperature,
-            args.polynomial, target=args.target,
+            args.polynomial, args.samples, target=args.target,
             outfile=args.output, verbose=args.verbose)
 
     _placeholder = lambda: None # Symbol for the CLI script to import and call.

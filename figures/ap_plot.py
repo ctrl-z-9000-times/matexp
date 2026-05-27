@@ -118,5 +118,5 @@ for row, col, index in [(0, 0, 0), (0, 1, 1), (1, 0, 2), (1, 1, 3)]:
     elif index == 3:
         axes.spines[['right']].set_visible(False)
 
-fig.savefig("ap_demo.png", bbox_inches='tight', pad_inches=0.)
+fig.savefig("ap_demo.jpg", bbox_inches='tight', pad_inches=0.)
 if not os.environ.get('NOSHOW', ''): plt.show()

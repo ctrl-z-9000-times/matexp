@@ -142,7 +142,8 @@ _table_name_autoinc = 0
 
 class Approx:
     """ Abstract base class. """
-    def __init__(self, samples, polynomial):
+    def __init__(self, samples, polynomial, safety_factor=100):
+        self.safety_factor  = round(safety_factor)
         self.table_sm       = None
         self.samples        = samples
         self.model          = samples.model
@@ -185,8 +186,8 @@ class Approx:
         for inp, num_buckets in zip(self.model.inputs, self.num_buckets):
             inp.set_num_buckets(num_buckets)
 
-    def _ensure_enough_exact_samples(self, safety_factor=100):
-        samples_per_bucket = safety_factor * self.polynomial.num_terms
+    def _ensure_enough_exact_samples(self):
+        samples_per_bucket = self.safety_factor * self.polynomial.num_terms
         # Divide the input space into many more buckets to ensure that the
         # samples are uniformly spaced within each bucket.
         subdivisions = math.ceil(samples_per_bucket ** (1 / self.model.num_inputs))
@@ -245,8 +246,8 @@ class Approx:
         return x
 
 class Approx1D(Approx):
-    def __init__(self, samples, polynomial):
-        super().__init__(samples, polynomial)
+    def __init__(self, samples, polynomial, *args, **kwargs):
+        super().__init__(samples, polynomial, *args, **kwargs)
         self.input1 = self.model.input1
         self._ensure_enough_exact_samples()
         self._alloc_table()
@@ -327,8 +328,8 @@ class Approx1D(Approx):
         return np.max(np.abs(approx - exact))
 
 class Approx2D(Approx):
-    def __init__(self, samples, polynomial):
-        super().__init__(samples, polynomial)
+    def __init__(self, samples, polynomial, *args, **kwargs):
+        super().__init__(samples, polynomial, *args, **kwargs)
         self.input1 = self.model.input1
         self.input2 = self.model.input2
         self._ensure_enough_exact_samples()

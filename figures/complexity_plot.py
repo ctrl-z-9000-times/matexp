@@ -61,12 +61,12 @@ for index, (name, error, speed) in enumerate(all_data):
 
 # plt.title('Speed vs Accuracy')
 plt.ylabel('Wall-Clock Time (ms)')
-plt.xlabel('Accuracy')
+plt.xlabel('Error Target')
 plt.gca().set_yscale("log")
 plt.gca().xaxis.minorticks_off()
 plt.gca().xaxis.set_ticks([10**-n for n in range(8, 0, -1)])
 plt.legend(loc='lower left')
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-plt.savefig("complexity.png", bbox_inches='tight', pad_inches=0.)
+plt.savefig("complexity.jpg", bbox_inches='tight', pad_inches=0.)
 
 if not os.environ.get('NOSHOW', ''): plt.show()

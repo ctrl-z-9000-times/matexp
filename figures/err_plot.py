@@ -93,7 +93,7 @@ cm = 1/2.54 # Unit conversion
 fontsize = 8.
 plt.rcParams.update({'font.size': fontsize})
 plt.figure("Accuracy Comparison", figsize=(8.5*cm, 8.5*cm), dpi=300)
-plt.ylabel("Accuracy")
+plt.ylabel("Integration Error")
 plt.xlabel("Δt (ms)")
 plt.xlim(min(time_steps), max(time_steps))
 plt.ylim(1e-4, .3)
@@ -113,7 +113,7 @@ for method, method_data in error_bounds.items():
         max_err_data.append(max_err)
     color = cmc.batlow(.0 if method == 'sparse' else .6)
     plt.loglog(dt_data, max_err_data, label=method_label(method) + " Maximum",
-               linewidth=3, color=color, zorder=100)
+               linewidth=3, color=color, zorder=2.1)
 
 # Draw every accuracy trace (very lightly)
 for method, mech_data in traces.items():
@@ -131,5 +131,5 @@ handles, labels = plt.gca().get_legend_handles_labels()
 order = [2, 0, 3, 1]
 plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-plt.savefig(args.DATA_DIR.name + ".png", bbox_inches='tight', pad_inches=0.)
+plt.savefig(args.DATA_DIR.name + ".jpg", bbox_inches='tight', pad_inches=0.)
 if not os.environ.get('NOSHOW', ''): plt.show()

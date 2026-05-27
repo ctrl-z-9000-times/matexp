@@ -44,6 +44,8 @@ def _initialize_thread_pool(model, verbose):
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # 
+    sys.modules['__main__'] = sys.modules[__name__] # Fixes multiprocessing issues, do not remove.
+    # 
     if _thread_pool is None:
         multiprocessing.set_start_method('spawn')
     else:
@@ -85,7 +87,7 @@ def main(nmodl_filename, inputs, time_step, temperature,
     return optimized
 
 def main_manual(nmodl_filename, inputs, time_step, temperature,
-            polynomial, target,
+            polynomial, safety_factor, target,
             outfile, verbose=False):
     model = LTI_Model(nmodl_filename, inputs, time_step, temperature)
     _initialize_thread_pool(model, verbose >= 2)
@@ -93,7 +95,7 @@ def main_manual(nmodl_filename, inputs, time_step, temperature,
     if   model.num_inputs == 1: ApproxClass = Approx1D
     elif model.num_inputs == 2: ApproxClass = Approx2D
     else: raise NotImplementedError('too many inputs.')
-    approx = ApproxClass(samples, polynomial)
+    approx = ApproxClass(samples, polynomial, safety_factor)
     codegen = Codegen(approx, target)
     if verbose:
         print(str(approx).strip())
