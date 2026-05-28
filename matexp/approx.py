@@ -6,14 +6,18 @@ import math
 import numpy as np
 
 class MatrixSamples:
+    _name_autoinc = 1000
+
     def __init__(self, model, verbose=False):
+        self._samples_id = self._name_autoinc
+        type(self)._name_autoinc += 1
         self.model   = model
         self.verbose = bool(verbose)
-        self.inputs  = [np.empty(0) for _ in range(model.num_inputs)]
-        self.samples = np.empty((0, model.num_states, model.num_states))
-        self.inputs_sm  = [None for _ in range(model.num_inputs)]
-        self.samples_sm = None
-        self._allocated = 0
+        self.inputs  = [np.empty(0) for _ in range(model.num_inputs)] # Numpy arrays, backed by shared memory
+        self.samples = np.empty((0, model.num_states, model.num_states)) # Numpy array, backed by shared memory
+        self.inputs_sm  = [None for _ in range(model.num_inputs)] # Shared memory
+        self.samples_sm = None # Shared memory
+        self._capacity = 0 # Over-allocate the shared memory buffers for fast append
 
     def _get_bucket_shape(self):
         return tuple(inp.num_buckets for inp in self.model.inputs)
@@ -58,41 +62,24 @@ class MatrixSamples:
         if self.verbose: print(f'Collecting {total_new} matrix samples ... ', end='', flush=True)
         matrices = self.model.make_matrix(inputs)
         # Save the results to shared memory.
-        old_samples = len(self)
-        total_samples = old_samples + total_new
-        num_inputs = self.model.num_inputs
-        num_states = self.model.num_states
-        samples_shape = (total_samples, num_states, num_states)
-        if total_samples > self._allocated:
-            # Reallocate into larger arrays.
-            inputs_tmp = [buf.copy() for buf in self.inputs]
-            samples_tmp = self.samples.copy()
-            self._free_sm()
-            new_alloc = total_samples * 2
-            self.inputs_sm = []
-            self.inputs = []
-            for dim in range(num_inputs):
-                sm = SharedMemory(f'matexp_inputs_{dim}', True, 8 * new_alloc)
-                buf = np.ndarray((total_samples,), dtype=np.float64, buffer=sm.buf)
-                self.inputs_sm.append(sm)
-                self.inputs.append(buf)
-                buf[:old_samples] = inputs_tmp[dim]
-                buf[old_samples:] = inputs[dim]
-            samples_bytes = 8 * new_alloc * num_states * num_states
-            self.samples_sm = SharedMemory('matexp_samples', True, samples_bytes)
-            self.samples = np.ndarray(samples_shape, dtype=np.float64, buffer=self.samples_sm.buf)
-            self.samples[:old_samples, :, :] = samples_tmp
-            self.samples[old_samples:, :, :] = matrices
-        else:
-            # Append to the existing arrays.
-            self.inputs = []
-            for sm, new_data in zip(self.inputs_sm, inputs):
-                buf = np.ndarray((total_samples,), dtype=np.float64, buffer=sm.buf)
-                buf[old_samples:] = new_data
-                self.inputs.append(buf)
-            self.samples = np.ndarray(samples_shape, dtype=np.float64, buffer=self.samples_sm.buf)
-            self.samples[old_samples:, :, :] = matrices
+        self._append_sm(inputs, matrices)
         if self.verbose: print('done')
+
+    def sample_stratified(self, minimum_samples_per_bucket):
+        """
+        Subdivide the each bucket and sample once from each subdividsion to
+        ensure that the samples are uniformly spaced within each bucket.
+        """
+        original_num_buckets = [inp.num_buckets for inp in self.model.inputs]
+        #
+        subdivisions = math.ceil(minimum_samples_per_bucket ** (1 / self.model.num_inputs))
+        for inp in self.model.inputs:
+            inp.set_num_buckets(inp.num_buckets * subdivisions)
+        #
+        self.sample(1)
+        # Restore the original bucket dimensions.
+        for inp, num_buckets in zip(self.model.inputs, original_num_buckets):
+            inp.set_num_buckets(num_buckets)
 
     def sort(self):
         if len(self.samples) == 0: return
@@ -117,12 +104,56 @@ class MatrixSamples:
         return len(self.samples)
 
     @staticmethod
-    def _get_sm_weakref(num_inputs):
+    def _get_sm_weakref(num_inputs, samples_id):
         inputs_sm = []
         for dim in range(num_inputs):
-            inputs_sm.append(SharedMemory(f'matexp_inputs_{dim}', False))
-        samples_sm = SharedMemory('matexp_samples', False)
+            inputs_sm.append(SharedMemory(f'matexp_inputs_{dim}_{samples_id}', False))
+        samples_sm = SharedMemory(f'matexp_samples_{samples_id}', False)
         return (inputs_sm, samples_sm)
+
+    def _alloc_sm(self, num_samples, capacity):
+        num_inputs = self.model.num_inputs
+        num_states = self.model.num_states
+        samples_shape = (num_samples, num_states, num_states)
+        self._free_sm()
+        self._capacity = capacity
+        self.inputs_sm = []
+        self.inputs = []
+        for dim in range(num_inputs):
+            sm = SharedMemory(f'matexp_inputs_{dim}_{self._samples_id}', True, 8 * self._capacity)
+            arr = np.ndarray((num_samples,), dtype=np.float64, buffer=sm.buf)
+            self.inputs_sm.append(sm)
+            self.inputs.append(arr)
+        samples_bytes = 8 * self._capacity * num_states * num_states
+        self.samples_sm = SharedMemory(f'matexp_samples_{self._samples_id}', True, samples_bytes)
+        self.samples = np.ndarray(samples_shape, dtype=np.float64, buffer=self.samples_sm.buf)
+
+    def _append_sm(self, inputs, samples):
+        """ Save input & matrix sample data to shared memory """
+        old_samples = len(self)
+        new_samples = len(inputs[0])
+        total_samples = old_samples + new_samples
+        num_states = self.model.num_states
+        samples_shape = (total_samples, num_states, num_states)
+        if total_samples > self._capacity:
+            # Reallocate into larger arrays.
+            inputs_tmp = [buf.copy() for buf in self.inputs]
+            samples_tmp = self.samples.copy()
+            self._alloc_sm(total_samples, total_samples * 2)
+            for dim, arr in enumerate(self.inputs):
+                arr[:old_samples] = inputs_tmp[dim]
+                arr[old_samples:] = inputs[dim]
+            self.samples[:old_samples, :, :] = samples_tmp
+            self.samples[old_samples:, :, :] = samples
+        else:
+            # Append to the existing arrays.
+            self.inputs = []
+            for sm, new_data in zip(self.inputs_sm, inputs):
+                buf = np.ndarray((total_samples,), dtype=np.float64, buffer=sm.buf)
+                buf[old_samples:] = new_data
+                self.inputs.append(buf)
+            self.samples = np.ndarray(samples_shape, dtype=np.float64, buffer=self.samples_sm.buf)
+            self.samples[old_samples:, :, :] = samples
 
     def _free_sm(self):
         for sm in self.inputs_sm:
@@ -138,6 +169,30 @@ class MatrixSamples:
     def __del__(self):
         self._free_sm()
 
+    def _discard_excess_samples(self, maximum_samples_per_bucket):
+        """
+        Returns a new instance of MatrixSamples
+        """
+        # Subdivide the input space to the maximum
+        original_num_buckets = [inp.num_buckets for inp in self.model.inputs]
+        subdivisions = math.ceil(maximum_samples_per_bucket ** (1 / self.model.num_inputs))
+        for inp in self.model.inputs:
+            inp.set_num_buckets(inp.num_buckets * subdivisions)
+        # Limit the number of samples per subdivision to 1
+        subdivision_indices = self._get_bucket_flat_indices()
+        _, sample_indices = np.unique(subdivision_indices, return_index=True)
+        # Setup shared memory buffers for the reduced output
+        samples = MatrixSamples(self.model, self.verbose)
+        samples._alloc_sm(0, len(sample_indices))
+        samples._append_sm(
+                [inp[sample_indices] for inp in self.inputs],
+                self.samples[sample_indices, :, :])
+        # Restore the original bucket dimensions.
+        for inp, num_buckets in zip(self.model.inputs, original_num_buckets):
+            inp.set_num_buckets(num_buckets)
+        if self.verbose: print(f"Reduced sample count from {len(self)} to {len(samples)}")
+        return samples
+
 _table_name_autoinc = 0
 
 class Approx:
@@ -152,6 +207,10 @@ class Approx:
         self.polynomial     = PolynomialForm(self.model.inputs, polynomial)
         self.num_terms      = len(self.polynomial)
         self.num_buckets    = tuple(inp.num_buckets for inp in self.model.inputs)
+        # 
+        self.samples.sample_stratified(self.safety_factor * self.polynomial.num_terms)
+        self._alloc_table()
+        self._make_table()
 
     def _alloc_table(self):
         global _table_name_autoinc
@@ -162,16 +221,23 @@ class Approx:
         _table_name_autoinc += 1
 
     def _make_table(self):
+        # 
+        samples = self.samples
+        maximum_samples_per_bucket = 10 * self.safety_factor * self.polynomial.num_terms
+        if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
+            samples = samples._discard_excess_samples(maximum_samples_per_bucket)
+        # 
         from . import _thread_pool
         args = zip(repeat(self.table_name),
                     *(repeat(inp) for inp in self.model.inputs),
                     repeat(self.model.num_states),
                     repeat(self.polynomial),
-                    repeat(len(self.samples)),
-                    iter(self.samples))
+                    repeat(samples._samples_id),
+                    repeat(len(samples)),
+                    iter(samples))
         # rss_sum = sum(map(self._table_kernel, args)) # Single threaded
         rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
-        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
+        self.rmse = (rss_sum / self.num_states**2 / len(samples)) ** .5
 
     def __del__(self):
         if self.table_sm is not None:
@@ -186,22 +252,10 @@ class Approx:
         for inp, num_buckets in zip(self.model.inputs, self.num_buckets):
             inp.set_num_buckets(num_buckets)
 
-    def _ensure_enough_exact_samples(self):
-        samples_per_bucket = self.safety_factor * self.polynomial.num_terms
-        # Divide the input space into many more buckets to ensure that the
-        # samples are uniformly spaced within each bucket.
-        subdivisions = math.ceil(samples_per_bucket ** (1 / self.model.num_inputs))
-        for inp in self.model.inputs:
-            inp.set_num_buckets(inp.num_buckets * subdivisions)
-        # 
-        self.samples.sample(1)
-        # Restore the original bucket dimensions.
-        self.set_num_buckets()
-
     def measure_error(self):
         self.set_num_buckets()
         self.samples = MatrixSamples(self.model, self.samples.verbose)
-        self._ensure_enough_exact_samples()
+        self.samples.sample_stratified(self.safety_factor * self.polynomial.num_terms)
         return self.measure_residual_error()
 
     def measure_residual_error(self):
@@ -213,6 +267,7 @@ class Approx:
                     repeat(self.model.inputs),
                     repeat(self.polynomial),
                     repeat(self.num_states),
+                    repeat(self.samples._samples_id),
                     repeat(len(self.samples)),
                     iter(self.samples))
         # return max(map(self._error_kernel, args)) # Single threaded
@@ -246,12 +301,9 @@ class Approx:
         return x
 
 class Approx1D(Approx):
-    def __init__(self, samples, polynomial, *args, **kwargs):
-        super().__init__(samples, polynomial, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.input1 = self.model.input1
-        self._ensure_enough_exact_samples()
-        self._alloc_table()
-        self._make_table()
 
     @staticmethod
     def _polynomial_basis(input1_locations, num_terms):
@@ -265,9 +317,10 @@ class Approx1D(Approx):
     @staticmethod
     def _table_kernel(args):
         # Unpack the arguments.
-        table_name, input1, num_states, polynomial, num_samples, ((bucket_index,), data_range) = args
+        (table_name, input1, num_states, polynomial,
+                samples_id, num_samples, ((bucket_index,), data_range)) = args
         num_terms = polynomial.num_terms
-        (inputs_sm,), samples_sm = MatrixSamples._get_sm_weakref(1)
+        (inputs_sm,), samples_sm = MatrixSamples._get_sm_weakref(1, samples_id)
         table_sm        = SharedMemory(table_name, False)
         inputs_shape    = (num_samples,)
         samples_shape   = (num_samples, num_states, num_states)
@@ -301,10 +354,10 @@ class Approx1D(Approx):
     def _error_kernel(args):
         # Unpack the arguments.
         (table_name, power, (input1,), polynomial, num_states,
-                num_samples, ((bucket_index,), data_range)) = args
+                samples_id, num_samples, ((bucket_index,), data_range)) = args
         num_terms = polynomial.num_terms
         # Access the shared memory.
-        (inputs_sm,), samples_sm = MatrixSamples._get_sm_weakref(1)
+        (inputs_sm,), samples_sm = MatrixSamples._get_sm_weakref(1, samples_id)
         table_sm        = SharedMemory(table_name, False)
         inputs_shape    = (num_samples,)
         samples_shape   = (num_samples, num_states, num_states)
@@ -328,13 +381,10 @@ class Approx1D(Approx):
         return np.max(np.abs(approx - exact))
 
 class Approx2D(Approx):
-    def __init__(self, samples, polynomial, *args, **kwargs):
-        super().__init__(samples, polynomial, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.input1 = self.model.input1
         self.input2 = self.model.input2
-        self._ensure_enough_exact_samples()
-        self._alloc_table()
-        self._make_table()
 
     @staticmethod
     def _polynomial_basis(input1_locations, input2_locations, polynomial):
@@ -348,10 +398,10 @@ class Approx2D(Approx):
     def _table_kernel(args):
         # Unpack the arguments.
         (table_name, input1, input2, num_states, polynomial,
-                num_samples, ((bucket_index1, bucket_index2,), data_range)) = args
+                samples_id, num_samples, ((bucket_index1, bucket_index2,), data_range)) = args
         num_terms = polynomial.num_terms
         # Setup the shared memory.
-        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2)
+        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2, samples_id)
         table_sm        = SharedMemory(table_name, False)
         inputs_shape    = (num_samples,)
         samples_shape   = (num_samples, num_states, num_states)
@@ -376,42 +426,6 @@ class Approx2D(Approx):
         table_buf[bucket_index1, bucket_index2, :, :, :] = coef
         return np.sum(rss)
 
-    @staticmethod
-    def _table_kernel2(args):
-        # Unpack the arguments.
-        (table_name, input1, input2, num_states, polynomial,
-                num_samples, ((bucket_index1, bucket_index2,), data_range)) = args
-        num_terms = polynomial.num_terms
-        # Setup the shared memory.
-        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2)
-        table_sm        = SharedMemory(table_name, False)
-        inputs_shape    = (num_samples,)
-        samples_shape   = (num_samples, num_states, num_states)
-        table_shape     = (input1.num_buckets, input2.num_buckets, num_states, num_states, num_terms)
-        input1_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input1_sm.buf)
-        input2_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input2_sm.buf)
-        samples_buf     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
-        table_buf       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
-        # Slice out the current bucket's samples.
-        num_samples = data_range[1] - data_range[0]
-        input1_buf  = input1_buf[data_range[0] : data_range[1]]
-        input2_buf  = input2_buf[data_range[0] : data_range[1]]
-        samples_buf = samples_buf[data_range[0] : data_range[1]]
-        # Scale the inputs into the range [0,1].
-        input1_locations = input1.get_bucket_value(input1_buf) - bucket_index1
-        input2_locations = input2.get_bucket_value(input2_buf) - bucket_index2
-        #
-        A = Approx2D._polynomial_basis(input1_locations, input2_locations, polynomial)
-        # Process the matrix cells one at a time?
-        rss = 0
-        for s1 in range(num_states):
-            for s2 in range(num_states):
-                B = samples_buf[:, s1, s2]
-                coef, residual = np.linalg.lstsq(A, B, rcond=None)[:2]
-                table_buf[bucket_index1, bucket_index2, s1, s2, :] = coef
-                rss += np.sum(residual)
-        return rss
-
     def approximate_matrix(self, input1, input2):
         assert len(input1.shape) == 1 and input1.shape == input2.shape
         num_samples = len(input1)
@@ -429,10 +443,10 @@ class Approx2D(Approx):
     def _error_kernel(args):
         # Unpack the arguments.
         (table_name, power, (input1, input2), polynomial, num_states,
-                num_samples, ((bucket_index1, bucket_index2), data_range)) = args
+                samples_id, num_samples, ((bucket_index1, bucket_index2), data_range)) = args
         num_terms = polynomial.num_terms
         # Access the shared memory.
-        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2)
+        (input1_sm, input2_sm), samples_sm = MatrixSamples._get_sm_weakref(2, samples_id)
         table_sm        = SharedMemory(table_name, False)
         inputs_shape    = (num_samples,)
         samples_shape   = (num_samples, num_states, num_states)

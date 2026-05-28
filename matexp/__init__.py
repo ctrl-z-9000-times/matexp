@@ -168,13 +168,13 @@ def _measure_speed(f, num_states, inputs, conserve_sum, target, *,
     # 
     def measure_inner(batch_size):
         state = _initial_state(xp, num_states, conserve_sum, batch_size)
-        input_indicies = xp.arange(batch_size, dtype=np.int32)
+        input_indices = xp.arange(batch_size, dtype=np.int32)
         elapsed_times = np.empty(num_repetitions)
         for trial in range(num_repetitions):
             input_arrays = []
             for inp in inputs:
                 input_arrays.append(inp.random(batch_size, np.float64, xp))
-                input_arrays.append(input_indicies)
+                input_arrays.append(input_indices)
             _clear_data_cache(xp, target)
             # Try to avoid task switching while running.
             time.sleep(0)
