@@ -2,13 +2,12 @@
 """
 Experiment with the logarithmic transform and its offset parameter.
 """
-from matexp import LinearInput, LogarithmicInput
+from matexp import LinearInput, LogarithmicInput, _initialize_thread_pool
 from matexp.lti_model import LTI_Model
 from matexp.optimizer import Optimizer
 import os
 import sys
 sys.stdout.reconfigure(line_buffering=True)
-sys.modules['__main__'] = sys.modules['matexp']
 import matplotlib.pyplot as plt
 import numpy as np
 import cmcrameri.cm as cmc
@@ -78,6 +77,7 @@ if True:
     num_buckets = [10, 500]
     for index, polynomial in enumerate(["v^3+v^2+v+1+C+C^2+C^3+v*C", "v^3+v^2+v+1", "1+C+C^2+C^3"]):
         nmda = make_nmda()
+        _initialize_thread_pool(nmda.model, True)
         scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
         axes.loglog(scales, errors, linestyle='-',
                     label=f'{polynomial} degree polynomial',
@@ -91,6 +91,7 @@ if True:
     polynomial = "v^3+v^2+v+1+C+C^2+C^3+v*C"
     for index, num_buckets in enumerate(([10, 500], [5, 500], [10, 250], [5, 250])):
         nmda = make_nmda()
+        _initialize_thread_pool(nmda.model, True)
         print(num_buckets, polynomial, min_scale, num_scales)
         scales, errors = nmda._eval_log_scale(num_buckets, polynomial, min_scale, num_scales)
         print(scales, errors)
