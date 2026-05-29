@@ -137,7 +137,7 @@ class MatrixSamples:
         samples_shape = (total_samples, num_states, num_states)
         if total_samples > self._capacity:
             # Reallocate into larger arrays.
-            inputs_tmp = [buf.copy() for buf in self.inputs]
+            inputs_tmp = [arr.copy() for arr in self.inputs]
             samples_tmp = self.samples.copy()
             self._alloc_sm(total_samples, total_samples * 2)
             for dim, arr in enumerate(self.inputs):
@@ -149,9 +149,9 @@ class MatrixSamples:
             # Append to the existing arrays.
             self.inputs = []
             for sm, new_data in zip(self.inputs_sm, inputs):
-                buf = np.ndarray((total_samples,), dtype=np.float64, buffer=sm.buf)
-                buf[old_samples:] = new_data
-                self.inputs.append(buf)
+                arr = np.ndarray((total_samples,), dtype=np.float64, buffer=sm.buf)
+                arr[old_samples:] = new_data
+                self.inputs.append(arr)
             self.samples = np.ndarray(samples_shape, dtype=np.float64, buffer=self.samples_sm.buf)
             self.samples[old_samples:, :, :] = samples
 
@@ -224,8 +224,8 @@ class Approx:
         # 
         samples = self.samples
         maximum_samples_per_bucket = 10 * self.safety_factor * self.polynomial.num_terms
-        if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
-            samples = samples._discard_excess_samples(maximum_samples_per_bucket)
+        # if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
+        #     samples = samples._discard_excess_samples(maximum_samples_per_bucket)
         # 
         from . import _thread_pool
         args = zip(repeat(self.table_name),
@@ -456,6 +456,7 @@ class Approx2D(Approx):
         samples_buf     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
         table_buf       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
         # Slice out one chunk of data.
+        data_range  = [int(x) for x in data_range]
         num_samples = data_range[1] - data_range[0]
         input1_buf  = input1_buf[data_range[0] : data_range[1]]
         input2_buf  = input2_buf[data_range[0] : data_range[1]]
@@ -476,6 +477,8 @@ class Approx2D(Approx):
         approx = np.clip(approx, 0, 1)
         approx /= np.sum(approx, axis = 1, keepdims=True)
         # Increase the timestep to 1 ms
-        approx = np.linalg.matrix_power(approx, power)
-        exact  = np.linalg.matrix_power(exact, power)
+        for c in range(num_samples // 100 + 1):
+            chunk = slice(100 * c, min(100 * (c + 1), num_samples))
+            approx[chunk, :, :] = np.linalg.matrix_power(approx[chunk, :, :], power)
+            exact[chunk, :, :]  = np.linalg.matrix_power(exact[chunk, :, :], power)
         return np.max(np.abs(approx - exact))

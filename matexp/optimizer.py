@@ -103,7 +103,7 @@ class Optimizer:
             self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
             self.best.benchmark()
 
-    def _optimize_log_scale(self, num_buckets: [int], polynomial):
+    def _optimize_log_scale(self, num_buckets: [int], polynomial: [int]):
         if not any(isinstance(inp, LogarithmicInput) for inp in self.model.inputs):
             return
         if self.verbose: print('Optimizing logarithmic scale ...')
@@ -137,24 +137,25 @@ class Optimizer:
         search_space = log_inp.sample_space(num_scales + 1)[1:] # Do not try scale=zero
 
         # Collect all of the samples before building any polynomials.
+        oversample_factor = 100
         for scale in search_space:
             log_inp.set_scale(scale)
-            Approx(self.samples, polynomial)._ensure_enough_exact_samples()
+            self.samples.sample_stratified(oversample_factor * len(polynomial))
 
         if   self.model.num_inputs == 1: ApproxClass = Approx1D
         elif self.model.num_inputs == 2: ApproxClass = Approx2D
 
         # Measure the error associated with each scale parameter.
-        if self.verbose: print(f'Evaluating {num_scales} scales', end='', flush=True)
+        if self.verbose: print(f'Evaluating {num_scales} scales ...')
         rss_error = []
         # absmax_error = []
         for scale in search_space:
             log_inp.set_scale(scale)
-            approx = ApproxClass(self.samples, polynomial)
+            approx = ApproxClass(self.samples, polynomial, oversample_factor)
             rss_error.append(approx.rmse)
             # absmax_error.append(approx.measure_residual_error())
-            if self.verbose: print('.', end='', flush=True)
-        if self.verbose: print()
+        # Dump the samples BC most of them are clustered at the extremes.
+        # self.samples = MatrixSamples(self.model, self.verbose)
         return search_space, rss_error
 
     def _optimize_polynomial(self, num_buckets, polynomial):
