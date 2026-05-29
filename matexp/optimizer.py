@@ -154,8 +154,6 @@ class Optimizer:
             approx = ApproxClass(self.samples, polynomial, oversample_factor)
             rss_error.append(approx.rmse)
             # absmax_error.append(approx.measure_residual_error())
-        # Dump the samples BC most of them are clustered at the extremes.
-        # self.samples = MatrixSamples(self.model, self.verbose)
         return search_space, rss_error
 
     def _optimize_polynomial(self, num_buckets, polynomial):

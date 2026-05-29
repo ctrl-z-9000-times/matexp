@@ -5,12 +5,13 @@ from itertools import pairwise, repeat
 import math
 import numpy as np
 
-class MatrixSamples:
-    _name_autoinc = 1000
+_samples_name_autoinc = 1000
 
+class MatrixSamples:
     def __init__(self, model, verbose=False):
-        self._samples_id = self._name_autoinc
-        type(self)._name_autoinc += 1
+        global _samples_name_autoinc
+        self._samples_id = _samples_name_autoinc
+        _samples_name_autoinc += 1
         self.model   = model
         self.verbose = bool(verbose)
         self.inputs  = [np.empty(0) for _ in range(model.num_inputs)] # Numpy arrays, backed by shared memory
@@ -221,23 +222,17 @@ class Approx:
         _table_name_autoinc += 1
 
     def _make_table(self):
-        # 
-        samples = self.samples
-        maximum_samples_per_bucket = 10 * self.safety_factor * self.polynomial.num_terms
-        # if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
-        #     samples = samples._discard_excess_samples(maximum_samples_per_bucket)
-        # 
         from . import _thread_pool
         args = zip(repeat(self.table_name),
                     *(repeat(inp) for inp in self.model.inputs),
                     repeat(self.model.num_states),
                     repeat(self.polynomial),
-                    repeat(samples._samples_id),
-                    repeat(len(samples)),
-                    iter(samples))
+                    repeat(self.samples._samples_id),
+                    repeat(len(self.samples)),
+                    iter(self.samples))
         # rss_sum = sum(map(self._table_kernel, args)) # Single threaded
         rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
-        self.rmse = (rss_sum / self.num_states**2 / len(samples)) ** .5
+        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
 
     def __del__(self):
         if self.table_sm is not None:
@@ -451,22 +446,22 @@ class Approx2D(Approx):
         inputs_shape    = (num_samples,)
         samples_shape   = (num_samples, num_states, num_states)
         table_shape     = (input1.num_buckets, input2.num_buckets, num_states, num_states, num_terms)
-        input1_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input1_sm.buf)
-        input2_buf      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input2_sm.buf)
-        samples_buf     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
-        table_buf       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
+        input1_arr      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input1_sm.buf)
+        input2_arr      = np.ndarray(inputs_shape, dtype=np.float64, buffer=input2_sm.buf)
+        samples_arr     = np.ndarray(samples_shape, dtype=np.float64, buffer=samples_sm.buf)
+        table_arr       = np.ndarray(table_shape, dtype=np.float64, buffer=table_sm.buf)
         # Slice out one chunk of data.
         data_range  = [int(x) for x in data_range]
         num_samples = data_range[1] - data_range[0]
-        input1_buf  = input1_buf[data_range[0] : data_range[1]]
-        input2_buf  = input2_buf[data_range[0] : data_range[1]]
-        exact       = samples_buf[data_range[0] : data_range[1]]
+        input1_arr  = input1_arr[data_range[0] : data_range[1]]
+        input2_arr  = input2_arr[data_range[0] : data_range[1]]
+        samples_arr = samples_arr[data_range[0] : data_range[1]]
         # Evaluate the approximation.
-        input1_index, input1_location = input1._get_bucket_location_array(input1_buf)
-        input2_index, input2_location = input2._get_bucket_location_array(input2_buf)
+        input1_index, input1_location = input1._get_bucket_location_array(input1_arr)
+        input2_index, input2_location = input2._get_bucket_location_array(input2_arr)
         basis = Approx2D._polynomial_basis(input1_location, input2_location, polynomial)
         basis  = basis.reshape(num_samples, 1, 1, num_terms)
-        coef   = table_buf[bucket_index1, bucket_index2, :, :, :]
+        coef   = table_arr[bucket_index1, bucket_index2, :, :, :]
         approx = np.sum(coef * basis, axis = -1)
         # Conserve the sum of states. Note: although this step is not part of
         # the runtime calculation, it's included here for program stability.
@@ -477,8 +472,9 @@ class Approx2D(Approx):
         approx = np.clip(approx, 0, 1)
         approx /= np.sum(approx, axis = 1, keepdims=True)
         # Increase the timestep to 1 ms
+        exact = np.empty_like(samples_arr)
         for c in range(num_samples // 100 + 1):
             chunk = slice(100 * c, min(100 * (c + 1), num_samples))
             approx[chunk, :, :] = np.linalg.matrix_power(approx[chunk, :, :], power)
-            exact[chunk, :, :]  = np.linalg.matrix_power(exact[chunk, :, :], power)
+            exact[chunk, :, :]  = np.linalg.matrix_power(samples_arr[chunk, :, :], power)
         return np.max(np.abs(approx - exact))
