@@ -150,16 +150,16 @@ class Optimizer:
 
         # Measure the error associated with each scale parameter.
         if self.verbose: print(f'Evaluating {num_scales} scales ', end='', flush=True)
-        rss_error = []
+        rmse_error = []
         max_abs_error = []
         for scale in search_space:
             log_inp.set_scale(scale)
             approx = ApproxClass(self.samples, polynomial, safety_factor)
-            rss_error.append(approx.rmse)
-            max_abs_error.append(approx.measure_residual_error())
+            rmse_error.append(approx.rmse)
+            # max_abs_error.append(approx.measure_residual_error())
             if self.verbose: print('.', end='', flush=True)
         if self.verbose: print()
-        return search_space, max_abs_error
+        return search_space, rmse_error
 
     def _optimize_polynomial(self, num_buckets, polynomial):
         cursor = self._optimize_num_buckets(num_buckets, polynomial)
