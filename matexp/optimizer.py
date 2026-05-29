@@ -146,15 +146,17 @@ class Optimizer:
         elif self.model.num_inputs == 2: ApproxClass = Approx2D
 
         # Measure the error associated with each scale parameter.
-        if self.verbose: print(f'Evaluating {num_scales} scales ...')
+        if self.verbose: print(f'Evaluating {num_scales} scales ', end='', flush=True)
         rss_error = []
-        # absmax_error = []
+        max_abs_error = []
         for scale in search_space:
             log_inp.set_scale(scale)
             approx = ApproxClass(self.samples, polynomial, oversample_factor)
             rss_error.append(approx.rmse)
-            # absmax_error.append(approx.measure_residual_error())
-        return search_space, rss_error
+            max_abs_error.append(approx.measure_residual_error())
+            if self.verbose: print('.', end='', flush=True)
+        if self.verbose: print()
+        return search_space, max_abs_error
 
     def _optimize_polynomial(self, num_buckets, polynomial):
         cursor = self._optimize_num_buckets(num_buckets, polynomial)
