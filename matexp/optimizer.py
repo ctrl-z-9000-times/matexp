@@ -103,7 +103,7 @@ class Optimizer:
             self.best = Parameters(self, self.best.num_buckets, self.best.polynomial)
             self.best.benchmark()
 
-    def _optimize_log_scale(self, num_buckets: [int], polynomial: [int]):
+    def _optimize_log_scale(self, num_buckets: [int], polynomial):
         if not any(isinstance(inp, LogarithmicInput) for inp in self.model.inputs):
             return
         if self.verbose: print('Optimizing logarithmic scale ...')
@@ -121,6 +121,9 @@ class Optimizer:
         if self.verbose: print(f'Optimial logarithmic scale = {best_scale}\n')
 
     def _eval_log_scale(self, num_buckets, polynomial, min_scale, num_scales):
+        if not isinstance(polynomial, PolynomialForm):
+            polynomial = PolynomialForm(self.model.inputs, polynomial)
+
         # Find the logarithmic input.
         log_inp = [inp for inp in self.model.inputs if isinstance(inp, LogarithmicInput)]
         assert len(log_inp) == 1, "multiple logarithmic inputs not supported"
@@ -137,10 +140,10 @@ class Optimizer:
         search_space = log_inp.sample_space(num_scales + 1)[1:] # Do not try scale=zero
 
         # Collect all of the samples before building any polynomials.
-        oversample_factor = 100
+        safety_factor = 100
         for scale in search_space:
             log_inp.set_scale(scale)
-            self.samples.sample_stratified(oversample_factor * len(polynomial))
+            self.samples.sample_stratified(safety_factor * polynomial.num_terms)
 
         if   self.model.num_inputs == 1: ApproxClass = Approx1D
         elif self.model.num_inputs == 2: ApproxClass = Approx2D
@@ -151,7 +154,7 @@ class Optimizer:
         max_abs_error = []
         for scale in search_space:
             log_inp.set_scale(scale)
-            approx = ApproxClass(self.samples, polynomial, oversample_factor)
+            approx = ApproxClass(self.samples, polynomial, safety_factor)
             rss_error.append(approx.rmse)
             max_abs_error.append(approx.measure_residual_error())
             if self.verbose: print('.', end='', flush=True)
