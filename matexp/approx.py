@@ -222,17 +222,23 @@ class Approx:
         _table_name_autoinc += 1
 
     def _make_table(self):
+        # 
+        samples = self.samples
+        maximum_samples_per_bucket = 100 * self.safety_factor * self.polynomial.num_terms
+        if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
+            samples = samples._discard_excess_samples(maximum_samples_per_bucket)
+        #    
         from . import _thread_pool
         args = zip(repeat(self.table_name),
                     *(repeat(inp) for inp in self.model.inputs),
                     repeat(self.model.num_states),
                     repeat(self.polynomial),
-                    repeat(self.samples._samples_id),
-                    repeat(len(self.samples)),
-                    iter(self.samples))
+                    repeat(samples._samples_id),
+                    repeat(len(samples)),
+                    iter(samples))
         # rss_sum = sum(map(self._table_kernel, args)) # Single threaded
         rss_sum = sum(_thread_pool.map(self._table_kernel, list(args), chunksize=1)) # Multithreaded
-        self.rmse = (rss_sum / self.num_states**2 / len(self.samples)) ** .5
+        self.rmse = (rss_sum / self.num_states**2 / len(samples)) ** .5
 
     def __del__(self):
         if self.table_sm is not None:
