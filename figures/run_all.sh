@@ -25,15 +25,17 @@ bash ap_run.sh
 
 bash speed_run.sh
 
-bash gpu_run.sh
-
 bash complexity_run.sh
+
+bash gpu_run.sh
 
 # Gather up the results
 mkdir results
-mv $HOME/install_log.txt results/
-mv ./*.png results/
-mv ./*_log.txt results/
-mv ./*_data results/
-mv propagator_out results/
+cp -rp $HOME/install_log.txt results/
+cp -rp ./*.png results/
+cp -rp ./*.jpg results/
+cp -rp ./*_log.txt results/
+cp -rp ./*_data results/
+cp -rp ./*.csv results/
+cp -rp propagator_out results/
 tar -czf results.tar.gz results
