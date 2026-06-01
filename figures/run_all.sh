@@ -10,7 +10,6 @@ export NOSHOW=1
 echo "RUNFAST DEBUG MODE FLAG: $RUNFAST"
 
 lscpu
-lspci
 if [ -x "$(command -v nvidia-smi)" ]; then
 	nvidia-smi
 fi
