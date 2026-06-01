@@ -89,5 +89,5 @@ ax.set_yscale("log")
 ax.set_ylim(1e-5, 1)
 ax.legend(loc=[.60, .82])
 plt.gca().spines[['right', 'top']].set_visible(False) # Hide the top & right borders
-plt.savefig("speed_plot.png", bbox_inches='tight', pad_inches=0)
+plt.savefig("speed_plot.jpg", bbox_inches='tight', pad_inches=0)
 if not os.environ.get('NOSHOW', ''): plt.show()
