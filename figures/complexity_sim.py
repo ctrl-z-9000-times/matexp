@@ -41,7 +41,7 @@ def measure_speed(parameters):
     inputs = parameters.model.inputs
     num_states = parameters.model.num_states
     return matexp._measure_speed(fn, num_states, inputs, conserve_sum = 1.0,
-                                target = 'host', num_repetitions = 100)
+                                target = 'host')
 
 def table_size(parameters):
     return parameters.approx.table.nbytes
