@@ -224,7 +224,7 @@ class Approx:
     def _make_table(self):
         # 
         samples = self.samples
-        maximum_samples_per_bucket = 100 * self.safety_factor * self.polynomial.num_terms
+        maximum_samples_per_bucket = 10 * self.safety_factor * self.polynomial.num_terms
         if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
             samples = samples._discard_excess_samples(maximum_samples_per_bucket)
         #    
