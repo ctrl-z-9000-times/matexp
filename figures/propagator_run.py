@@ -23,7 +23,7 @@ env = dict(os.environ)
 env['NOSHOW'] = '1'
 
 for file in mod_files:
-	cmd = [program, "--time_step", ".100", file]
+	cmd = [program, "--time_step", ".025", file]
 	print(' '.join(str(x) for x in cmd))
 	run(cmd, env=env, check=True)
 
