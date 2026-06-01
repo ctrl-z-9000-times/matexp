@@ -198,7 +198,7 @@ _table_name_autoinc = 0
 
 class Approx:
     """ Abstract base class. """
-    def __init__(self, samples, polynomial, safety_factor=100):
+    def __init__(self, samples, polynomial, safety_factor=100, oversample_factor=10):
         self.safety_factor  = round(safety_factor)
         self.table_sm       = None
         self.samples        = samples
@@ -211,7 +211,7 @@ class Approx:
         # 
         self.samples.sample_stratified(self.safety_factor * self.polynomial.num_terms)
         self._alloc_table()
-        self._make_table()
+        self._make_table(oversample_factor)
 
     def _alloc_table(self):
         global _table_name_autoinc
@@ -221,10 +221,10 @@ class Approx:
         self.table = np.ndarray(table_shape, dtype=np.float64, buffer=self.table_sm.buf)
         _table_name_autoinc += 1
 
-    def _make_table(self):
+    def _make_table(self, oversample_factor):
         # 
         samples = self.samples
-        maximum_samples_per_bucket = 10 * self.safety_factor * self.polynomial.num_terms
+        maximum_samples_per_bucket = oversample_factor * self.safety_factor * self.polynomial.num_terms
         if np.max(samples._count_samples_per_bucket()) > maximum_samples_per_bucket:
             samples = samples._discard_excess_samples(maximum_samples_per_bucket)
         #    

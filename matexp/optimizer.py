@@ -154,7 +154,7 @@ class Optimizer:
         max_abs_error = []
         for scale in search_space:
             log_inp.set_scale(scale)
-            approx = ApproxClass(self.samples, polynomial, safety_factor)
+            approx = ApproxClass(self.samples, polynomial, safety_factor, oversample_factor=1000)
             rmse_error.append(approx.rmse)
             # max_abs_error.append(approx.measure_residual_error())
             if self.verbose: print('.', end='', flush=True)
