@@ -37,7 +37,7 @@ class Parameters:
     def __str__(self):
         s = str(self.approx)
         s += f"# Samples:    {self.num_samples}\n"
-        s += f"Error:        {self.error}\n"
+        s += f"Residual Err: {self.error}\n"
         if hasattr(self, "runtime"):
             s += f"Run speed:    {round(self.runtime, 2)}  ns/Δt\n"
         return s
