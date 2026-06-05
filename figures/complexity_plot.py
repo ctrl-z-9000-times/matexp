@@ -60,7 +60,7 @@ for index, (name, error, speed) in enumerate(all_data):
             markersize=8, markeredgecolor='black', markeredgewidth=.5)
 
 # plt.title('Speed vs Accuracy')
-plt.ylabel('Wall-Clock Time (ms)')
+plt.ylabel('Integration Speed (ms)')
 plt.xlabel('Error Target')
 plt.gca().set_yscale("log")
 plt.gca().xaxis.minorticks_off()
