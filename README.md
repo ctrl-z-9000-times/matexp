@@ -1,26 +1,23 @@
 # matexp
 
 This program solves systems of differential equations for the NEURON simulator
-using the matrix-exponential method of integration. This is a new method of
-integration. The solution is faster and more accurate than NEURONs built
-in "sparse" solver. This method is only applicable to systems which are linear
-and time-invariant, such as Markov kinetic models. This method is also limited
-to systems with one or two inputs.
+using the approximate matrix exponential method of integration. This is a new
+method of integration. The solution is faster and more accurate than NEURONs
+built in "sparse" solver. This method is only applicable to systems which are
+linear and time-invariant, such as Markov kinetic models. This method is also
+limited to systems with one or two inputs.
 
 This program uses the
 [NMODL file format](https://www.neuron.yale.edu/neuron/static/py_doc/modelspec/programmatic/mechanisms/nmodl.html)
 (".mod" files). 
 The input kinetic model is an NMODL file, and the solution is written to a new NMODL file.
 
-For more information about how this program works see [DETAILS.md](./DETAILS.md).
-
 
 ### Installation
 
 Prerequisites:
-* Compiler for the target system.
-    + CPU requires `g++`
-    + Cuda requires the `cupy` python package.
+* Linux
+* The `g++` compiler
 
 ```
 $ pip install matexp
@@ -58,8 +55,5 @@ input specification:
 
 computer specification:
   --target {host,cuda}  default: host
-  -f {32,64}, --float {32,64}
-                        default: 64
-
 ```
 
