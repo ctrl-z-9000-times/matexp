@@ -14,7 +14,7 @@
     authors = [
         {name = "David McDougall", email = "dam1784@rit.edu"},
     ]
-    urls = {Homepage = "https://github.com/ctrl-z-9000-times/matexp"}
+    urls = {Homepage = "https://github.com/D-McDougall/matexp"}
     keywords = ["nmodl", "neuron"]
     classifiers = [
         "Programming Language :: Python :: 3",
