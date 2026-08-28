@@ -22,8 +22,8 @@ echo password | sudo -S apt-get install -y \
 	tmux
 
 # Download the github repo's
-git clone https://github.com/ctrl-z-9000-times/nrn.git
-git clone https://github.com/ctrl-z-9000-times/matexp.git
+git clone https://github.com/D-McDougall/nrn.git
+git clone https://github.com/D-McDougall/matexp.git
 git clone https://github.com/LLNL/Caliper.git
 
 # Update PIP? If pip was installed by the OS then this will fail
