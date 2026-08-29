@@ -1,10 +1,9 @@
 from matexp import main, LinearInput, LogarithmicInput
 import argparse
-import numpy as np
 import sys
 
-parser = argparse.ArgumentParser(prog='matexp',
-        description="Solves Markov models for NEURON mechanisms",)
+parser = argparse.ArgumentParser(prog='ame',
+        description="Solves Markov kinetic models for NEURON mechanisms",)
 parser.add_argument('nmodl_filename',
         metavar='INPUT_PATH',
         help="input path for unsolved NMODL file")
@@ -16,7 +15,7 @@ sim = parser.add_argument_group('simulation parameters')
 sim.add_argument('-dt', '--time_step', type=float, default=.025,
         help="milliseconds, default: 0.025")
 sim.add_argument('-t', '--temperature', type=float, default=37.0,
-        help="degrees celsius, default: 37")
+        help="degrees Celsius, default: 37")
 sim.add_argument('-e', '--error', type=float, default=1e-3,
         help="maximum absolute error per millisecond. default: 10^-3")
 inputs = parser.add_argument_group('input specification')
@@ -49,7 +48,7 @@ if __name__.endswith('__main__'):
     # Create the input data structures.
     inputs = [input_type(*args) for (input_type, args) in inputs.values()]
 
-    # Set this module as the __main__ module, in case run from /bin/matexp
+    # Set this module as the __main__ module, in case run from /bin/ame
     sys.modules['__main__'] = sys.modules[__name__] # Fixes multiprocessing issues, do not remove.
 
     main(args.nmodl_filename, inputs, args.time_step, args.temperature,

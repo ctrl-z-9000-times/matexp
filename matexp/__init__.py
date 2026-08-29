@@ -1,12 +1,8 @@
 """
-Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format.
+Approximate Matrix Exponential method for Markov kinetic models using the NMODL format
 
-Usage: python -m matexp
-
-For more information see:
-    Exact digital simulation of time-invariant linear systems with applications
-    to neuronal modeling. Rotter S, Diesmann M (1999).
-    https://doi.org/10.1007/s004220050570
+For historical reasons, this module is named "matexp" and the corresponding
+command line program is named "ame".
 """
 
 # Written by David McDougall, 2022-2026

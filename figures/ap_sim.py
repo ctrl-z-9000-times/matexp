@@ -31,9 +31,9 @@ mod_files = [
 out_dir = utils.copy_mod_files(mod_files)
 utils.set_solver(out_dir, args.METHOD)
 
-# Run the matexp program if necessary
+# Run the ame program if necessary
 if args.METHOD == "approx":
-    cmd = ["matexp", "-v", "-v", "--time_step", str(args.TIME_STEP), "--temperature", "37"]
+    cmd = ["ame", "-v", "-v", "--time_step", str(args.TIME_STEP), "--temperature", "37"]
     if args.ACCURACY:
         cmd.extend(["-e", str(args.ACCURACY)])
     cmd.extend(["--input", "v", "-70", "40"])

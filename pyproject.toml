@@ -8,7 +8,7 @@
 [project]
     name = "matexp"
     version = "1.1.0"
-    description = "Simulator for Linear Time-Invariant Kinetic Models using the NMODL file format."
+    description = "Approximate Matrix Exponential method for Markov kinetic models using the NMODL format"
     readme = "README.md"
     license = {text = "MIT"}
     authors = [
@@ -28,4 +28,4 @@
     ]
     requires-python = ">=3.8"
     dependencies = ["neuron", "numpy", "scipy", "dill"]
-    scripts = {matexp = "matexp:__main__._placeholder", matexp-manual = "matexp:manual._placeholder"}
+    scripts = {ame = "matexp:__main__._placeholder", ame-manual = "matexp:manual._placeholder"}

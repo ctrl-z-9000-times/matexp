@@ -1,11 +1,9 @@
 from matexp import main_manual, LinearInput, LogarithmicInput
 import argparse
-import numpy as np
-import re
 import sys
 
-parser = argparse.ArgumentParser(prog='matexp-manual',
-        description='Solves Markov models for NEURON mechanisms')
+parser = argparse.ArgumentParser(prog='ame-manual',
+        description='Solves Markov kinetic models for NEURON mechanisms')
 parser.add_argument('nmodl_filename',
         metavar='INPUT_PATH',
         help="path of unsolved NMODL file")
@@ -17,7 +15,7 @@ sim = parser.add_argument_group('simulation parameters')
 sim.add_argument('-dt', '--time_step', type=float, default=.025,
         help="milliseconds, default: 0.025")
 sim.add_argument('-t', '--temperature', type=float, default=37.0,
-        help="degrees celsius, default: 37")
+        help="degrees Celsius, default: 37")
 sim.add_argument('-p', '--polynomial', type=str, required=True,
         help="polynomial form, ex: v^2+v+1")
 sim.add_argument('-s', '--samples', type=int, default=100,
@@ -25,7 +23,7 @@ sim.add_argument('-s', '--samples', type=int, default=100,
 inputs = parser.add_argument_group('input specification')
 inputs.add_argument('-i', '--input', action='append', default=[],
         nargs=4, metavar=('NAME', 'MIN', 'MAX', 'BINS'),
-        help="input name, bounds, and number of paritions")
+        help="input name, bounds, and number of partitions")
 inputs.add_argument('--log', nargs=2, action='append', default=[],
         metavar=('INPUT', 'SCALE'),
         help="scale input logarithmically, for chemical concentrations")

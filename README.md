@@ -1,6 +1,6 @@
-# matexp
+# Approximate Matrix Exponential
 
-This program solves systems of differential equations for the NEURON simulator
+The `ame` program solves systems of differential equations for the NEURON simulator
 using the approximate matrix exponential method of integration. This is a new
 method of integration. The solution is faster and more accurate than NEURONs
 built in "sparse" solver. This method is only applicable to systems which are
@@ -13,7 +13,7 @@ This program uses the
 The input kinetic model is an NMODL file, and the solution is written to a new NMODL file.
 
 
-### Installation
+## Installation
 
 Prerequisites:
 * Linux
@@ -24,14 +24,15 @@ $ pip install matexp
 ```
 
 
-### Usage
+## Usage
 
 ```
-$ matexp --help
-usage: matexp [-h] [-v] [--plot] -t TIME_STEP [-c CELSIUS] [-e ERROR]
-              [-i NAME MIN MAX] [--log [INPUT]] [--target {host,cuda}]
-              [-f {32,64}]
-              INPUT_PATH OUTPUT_PATH
+$ ame --help
+usage: ame [-h] [-v] [-dt TIME_STEP] [-t TEMPERATURE] [-e ERROR]
+           [-i NAME MIN MAX] [--log [INPUT]] [--target {host,cuda}]
+           INPUT_PATH OUTPUT_PATH
+
+Solves Markov kinetic models for NEURON mechanisms
 
 positional arguments:
   INPUT_PATH            input path for unsolved NMODL file
@@ -42,7 +43,7 @@ options:
   -v, --verbose         print diagnostic information, give twice for trace mode
 
 simulation parameters:
-  --dt DT, --time_step DT
+  -dt TIME_STEP, --time_step TIME_STEP
                         milliseconds, default: 0.025
   -t TEMPERATURE, --temperature TEMPERATURE
                         degrees celsius, default: 37
@@ -57,3 +58,40 @@ computer specification:
   --target {host,cuda}  default: host
 ```
 
+### Manually Specifying Approximations
+
+```
+$ ame-manual --help
+usage: ame-manual [-h] [-v] [-dt TIME_STEP] [-t TEMPERATURE] -p POLYNOMIAL
+                  [-s SAMPLES] [-i NAME MIN MAX BINS] [--log INPUT SCALE]
+                  [--target {host,cuda}]
+                  INPUT_PATH OUTPUT_PATH
+
+Solves Markov kinetic models for NEURON mechanisms
+
+positional arguments:
+  INPUT_PATH            path of unsolved NMODL file
+  OUTPUT_PATH           path for solved NMODL file
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         print diagnostic information, give twice for trace mode
+
+simulation parameters:
+  -dt TIME_STEP, --time_step TIME_STEP
+                        milliseconds, default: 0.025
+  -t TEMPERATURE, --temperature TEMPERATURE
+                        degrees celsius, default: 37
+  -p POLYNOMIAL, --polynomial POLYNOMIAL
+                        polynomial form, ex: v^2+v+1
+  -s SAMPLES, --samples SAMPLES
+                        minimum sample count safety factor
+
+input specification:
+  -i NAME MIN MAX BINS, --input NAME MIN MAX BINS
+                        input name, bounds, and number of partitions
+  --log INPUT SCALE     scale input logarithmically, for chemical concentrations
+
+computer specification:
+  --target {host,cuda}  default: host
+```
